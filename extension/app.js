@@ -26,7 +26,7 @@ function toast(message, isError = false) {
   toastTimer = setTimeout(() => el.classList.remove('show'), isError ? 4000 : 2000);
 }
 
-const setPill = (id, state) => { $(id).dataset.state = state; };
+const setPill = (id, state) => { if ($(id).dataset.state !== state) $(id).dataset.state = state; };
 
 const fmtTime = (s) => {
   s = Math.max(0, Math.floor(s || 0));
@@ -178,7 +178,12 @@ async function pollAc() {
     setPill('pill-mi', 'error');
   }
   renderAc();
-  scheduleAcPoll(AC.error ? 15000 : 5000);
+  scheduleAcPoll(AC.error ? 20000 : 10000);
+}
+
+function setFanLabel(text) {
+  $('ac-fan-label').textContent = text;
+  $('ac-fan-label-fill').textContent = text;
 }
 
 function fanLevels() {
@@ -257,7 +262,7 @@ function renderAc() {
   const isAuto = ac.fanOptions().some((o) => o.value === s.fan && /auto/i.test(o.label));
   const levelIdx = levels.findIndex((o) => o.value === s.fan);
   if (!AC.fanSlider.dragging) AC.fanSlider.set(isAuto ? 0 : levelIdx + 1);
-  $('ac-fan-label').textContent = isAuto ? 'Fan · Auto' : levelIdx >= 0 ? `Fan · ${levelIdx + 1} of ${levels.length}` : 'Fan';
+  setFanLabel(isAuto ? 'Fan · Auto' : levelIdx >= 0 ? `Fan · ${levelIdx + 1} of ${levels.length}` : 'Fan');
   $('ac-fan-auto').setAttribute('aria-pressed', String(isAuto));
 
   for (const b of $('ac-modes').children) b.setAttribute('aria-pressed', String(Number(b.dataset.value) === s.mode));
@@ -364,7 +369,7 @@ function wireFan() {
     onInput: (v) => {
       if (!ac) return;
       const opt = optionAt(v);
-      $('ac-fan-label').textContent = /auto/i.test(opt?.label ?? '') ? 'Fan · Auto' : `Fan · ${Math.max(1, v)} of ${fanLevels().length}`;
+      setFanLabel(/auto/i.test(opt?.label ?? '') ? 'Fan · Auto' : `Fan · ${Math.max(1, v)} of ${fanLevels().length}`);
     },
     onChange: (v) => {
       const opt = ac && optionAt(v);
@@ -468,7 +473,7 @@ async function pollPc() {
   }
   renderPc();
   renderPlayer();
-  PC.pollTimer = setTimeout(pollPc, PC.online ? 1000 : PC.wakingUntil > Date.now() ? 2000 : 5000);
+  PC.pollTimer = setTimeout(pollPc, PC.online ? 2000 : PC.wakingUntil > Date.now() ? 2000 : 6000);
 }
 
 function setPcOffline(reason, pill = 'off') {
@@ -483,8 +488,12 @@ function setPcOffline(reason, pill = 'off') {
   renderPlayer();
 }
 
+let pcSig = '';
 function renderPc() {
   const waking = !PC.online && PC.wakingUntil > Date.now();
+  const sig = JSON.stringify([PC.online, waking, PC.name, PC.offlineReason, PC.actions.length]);
+  if (sig === pcSig) return;
+  pcSig = sig;
   $('pc').dataset.state = PC.online ? 'online' : waking ? 'waking' : 'offline';
   $('pc-name').textContent = PC.name || 'Main PC';
   $('pc-sub').textContent = PC.online ? 'Connected' : waking ? 'Waking up…' : (PC.offlineReason || 'Offline');
@@ -492,10 +501,18 @@ function renderPc() {
   for (const b of $('deck-grid').querySelectorAll('.shortcut')) b.disabled = !PC.online;
 }
 
+let playerSig = '';
 function renderPlayer() {
   const card = $('player');
   const m = PC.media;
   const active = PC.online && m?.active;
+  // Polls arrive every 2 s; only touch the DOM when something on screen actually changes.
+  const sig = JSON.stringify([PC.online, PC.offlineReason, PC.name, active && [m.app, m.title, m.artist, m.album,
+    m.playing, m.shuffle, m.repeat, m.can, m.playing ? 0 : Math.floor(m.position)]]);
+  syncProgressTimer();
+  renderVolume();
+  if (sig === playerSig) return;
+  playerSig = sig;
   card.dataset.state = PC.online ? 'online' : 'offline';
   card.dataset.playing = String(!!(active && m.playing));
   $('np-app').textContent = active ? m.app : 'Spotify';
@@ -513,14 +530,12 @@ function renderPlayer() {
   $('np-prev').disabled = !(active && m.can?.previous);
   $('np-next').disabled = !(active && m.can?.next);
   renderProgress();
-  syncProgressTimer();
-  renderVolume();
 }
 
 // Progress: 4 updates a second while playing (smoothed by a CSS transition), none otherwise.
 function syncProgressTimer() {
   const playing = PC.online && PC.media?.active && PC.media.playing && !document.hidden;
-  if (playing && !PC.progressTimer) PC.progressTimer = setInterval(renderProgress, 250);
+  if (playing && !PC.progressTimer) PC.progressTimer = setInterval(renderProgress, 1000);
   if (!playing && PC.progressTimer) { clearInterval(PC.progressTimer); PC.progressTimer = 0; }
 }
 
@@ -530,7 +545,6 @@ function renderProgress() {
   if (PC.online && m?.active && m.duration) {
     const elapsed = m.playing ? (performance.now() - PC.receivedAt) / 1000 : 0;
     const pos = Math.min(m.duration, m.position + elapsed);
-    fill.style.transition = m.playing ? 'transform .25s linear' : 'none';
     fill.style.transform = `scaleX(${pos / m.duration})`;
     $('np-pos').textContent = fmtTime(pos);
     $('np-dur').textContent = `-${fmtTime(m.duration - pos)}`;
@@ -548,8 +562,12 @@ function volumeInfo() {
   return { target, ...v[target], appAvailable: !!v.app };
 }
 
+let volumeSig = '';
 function renderVolume() {
   const info = volumeInfo();
+  const sig = JSON.stringify([info, PC.volTarget, PC.online, Date.now() > PC.volHoldUntil]);
+  if (sig === volumeSig) return;
+  volumeSig = sig;
   for (const b of $('vol-target').children) {
     b.setAttribute('aria-pressed', String(b.dataset.target === (info?.target ?? PC.volTarget)));
     if (b.dataset.target === 'app') b.disabled = !!(PC.online && info && !info.appAvailable);
@@ -592,9 +610,14 @@ async function setWallpaper(url) {
     const img = new Image();
     img.src = url;
     await img.decode();
+    const small = document.createElement('canvas');
+    small.width = small.height = 16;
+    small.getContext('2d').drawImage(img, 0, 0, 16, 16);
     const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 24;
-    canvas.getContext('2d').drawImage(img, 0, 0, 24, 24);
+    canvas.width = canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.filter = 'blur(4px) saturate(160%)';
+    ctx.drawImage(small, -8, -8, 80, 80);
     $(next).style.backgroundImage = `url(${canvas.toDataURL()})`;
     $(next).classList.add('show');
     $(wallLayer).classList.remove('show');
@@ -1107,7 +1130,8 @@ function wireControls() {
 
 async function main() {
   tickClock();
-  setInterval(tickClock, 5000);
+  const everyMinute = () => { tickClock(); setTimeout(everyMinute, 60000 - (Date.now() % 60000) + 50); };
+  setTimeout(everyMinute, 60000 - (Date.now() % 60000) + 50);
   PC.volTarget = await load('ui.volTarget', 'app');
   PC.actions = await load('pc.actions', []);
   wireControls();

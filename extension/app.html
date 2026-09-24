@@ -120,8 +120,8 @@
       <div class="fan-row" id="ac-fan-row">
         <div class="slider thick" id="ac-fan" role="slider" tabindex="0" aria-label="Fan speed" title="Fan speed">
           <div class="slider-fill"></div>
-          <svg class="i slider-icon"><use href="#i-fan"/></svg>
-          <span class="slider-label" id="ac-fan-label">Fan</span>
+          <div class="slider-face"><svg class="i slider-icon"><use href="#i-fan"/></svg><span class="slider-label" id="ac-fan-label">Fan</span></div>
+          <div class="slider-face on-fill" aria-hidden="true"><svg class="i slider-icon"><use href="#i-fan"/></svg><span class="slider-label" id="ac-fan-label-fill">Fan</span></div>
         </div>
         <button class="cc-toggle auto-btn" id="ac-fan-auto" aria-pressed="false" title="Automatic fan speed">Auto</button>
       </div>

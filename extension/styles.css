@@ -23,7 +23,7 @@
   --fill: rgba(120, 120, 128, 0.12);
   --fill-2: rgba(120, 120, 128, 0.2);
   --fill-strong: rgba(120, 120, 128, 0.32);
-  --material: rgba(255, 255, 255, 0.62);
+  --material: rgba(255, 255, 255, 0.78);
   --material-solid: #fff;
   --material-edge: rgba(255, 255, 255, 0.7);
   --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
@@ -53,7 +53,7 @@
     --fill: rgba(118, 118, 128, 0.24);
     --fill-2: rgba(118, 118, 128, 0.32);
     --fill-strong: rgba(118, 118, 128, 0.44);
-    --material: rgba(28, 28, 30, 0.55);
+    --material: rgba(28, 28, 30, 0.74);
     --material-solid: #1c1c1e;
     --material-edge: rgba(255, 255, 255, 0.08);
     --shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
@@ -80,7 +80,7 @@
   --fill: rgba(118, 118, 128, 0.24);
   --fill-2: rgba(118, 118, 128, 0.32);
   --fill-strong: rgba(118, 118, 128, 0.44);
-  --material: rgba(28, 28, 30, 0.55);
+  --material: rgba(28, 28, 30, 0.74);
   --material-solid: #1c1c1e;
   --material-edge: rgba(255, 255, 255, 0.08);
   --shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
@@ -129,10 +129,9 @@ code { font: 12px var(--mono); }
 /* ---------------------------------------------------------------- wallpaper */
 .wallpaper { position: fixed; inset: 0; z-index: -1; background: var(--wall); overflow: hidden; }
 .wp-art {
-  position: absolute; inset: -15%;
+  position: absolute; inset: 0;
   background-size: cover; background-position: center;
-  filter: blur(60px) saturate(1.6);
-  opacity: 0; transition: opacity 1.2s ease;
+  opacity: 0; transition: opacity .6s ease;  /* image is blurred once in JS (setWallpaper), not by CSS */
 }
 .wp-art.show { opacity: 1; }
 .wp-scrim { position: absolute; inset: 0; background: var(--scrim); }
@@ -145,12 +144,12 @@ code { font: 12px var(--mono); }
 .pill {
   display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 13px;
   border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--label-2);
-  background: var(--material); backdrop-filter: blur(30px) saturate(180%);
+  background: var(--material);
   box-shadow: inset 0 0 0 0.5px var(--material-edge);
 }
 .pill i, .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--label-3); flex: none; display: inline-block; }
 .pill[data-state="on"] i { background: var(--green); }
-.pill[data-state="busy"] i { background: var(--orange); animation: pulse 1.2s ease-in-out infinite; }
+.pill[data-state="busy"] i { background: var(--orange); }
 .pill[data-state="error"] i { background: var(--red); }
 
 .update-pill {
@@ -165,13 +164,13 @@ code { font: 12px var(--mono); }
 
 .glass-btn {
   display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
-  background: var(--material); backdrop-filter: blur(30px) saturate(180%);
+  background: var(--material);
   box-shadow: inset 0 0 0 0.5px var(--material-edge);
   color: var(--label); transition: transform .25s var(--spring), background .2s;
 }
 .glass-btn .i { width: 19px; height: 19px; }
 .glass-btn:active:not(:disabled) { transform: scale(0.9); }
-.glass-btn.lg { width: 54px; height: 54px; background: var(--fill); backdrop-filter: none; box-shadow: none; }
+.glass-btn.lg { width: 54px; height: 54px; background: var(--fill); box-shadow: none; }
 .glass-btn.lg .i { width: 24px; height: 24px; stroke-width: 2.4; }
 .glass-btn.lg:hover:not(:disabled) { background: var(--fill-2); }
 
@@ -186,7 +185,6 @@ code { font: 12px var(--mono); }
   display: flex; flex-direction: column; gap: 16px; padding: 20px;
   border-radius: var(--radius-card);
   background: var(--material);
-  backdrop-filter: blur(40px) saturate(180%);
   box-shadow: inset 0 0 0 0.5px var(--material-edge), var(--shadow);
 }
 .card-head { display: flex; align-items: center; gap: 12px; }
@@ -228,8 +226,8 @@ code { font: 12px var(--mono); }
 .dial svg { width: 100%; height: 100%; overflow: visible; }
 .dial circle { fill: none; stroke-width: 18; stroke-linecap: round; transform: rotate(135deg); transform-origin: 120px 120px; }
 .dial .track { stroke: var(--fill); stroke-dasharray: 471.24 628.32; }
-.dial .value { stroke: url(#dial-grad); stroke-dasharray: 0 628.32; transition: stroke-dasharray .45s var(--spring); }
-.dial .knob { fill: #fff; stroke: none; transform: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); transition: cx .45s var(--spring), cy .45s var(--spring); }
+.dial .value { stroke: url(#dial-grad); stroke-dasharray: 0 628.32; }
+.dial .knob { fill: #fff; stroke: rgba(0,0,0,0.18); stroke-width: 1; transform: none; }
 .dial.dragging .value, .dial.dragging .knob { transition: none; }
 .stop-a { stop-color: var(--mode-2); transition: stop-color .4s; }
 .stop-b { stop-color: var(--mode); transition: stop-color .4s; }
@@ -270,12 +268,12 @@ code { font: 12px var(--mono); }
 }
 .slider-fill { position: absolute; inset: 0 auto 0 0; width: calc(var(--val) * 100%); background: var(--on-fill); border-radius: inherit; }
 .slider.thick { height: 52px; border-radius: 18px; }
-.slider.thick .slider-fill { border-radius: 0; transition: width .3s var(--spring); }
+.slider.thick .slider-fill { border-radius: 0; }
 .slider.thick.active .slider-fill { transition: none; }
-.slider-icon, .slider-label { position: absolute; top: 50%; transform: translateY(-50%); mix-blend-mode: difference; color: #fff; }
-.slider-icon { left: 16px; width: 22px; height: 22px; }
-.slider-label { left: 48px; font-size: 14px; font-weight: 600; }
-.climate[data-power="on"] .fan-row .slider-icon { animation: spin 2.4s linear infinite; }
+.slider-face { position: absolute; inset: 0; display: flex; align-items: center; gap: 10px; padding-left: 16px; color: var(--label); pointer-events: none; }
+.slider-face.on-fill { color: #000; clip-path: inset(0 calc((1 - var(--val)) * 100%) 0 0); }
+.slider-icon { width: 22px; height: 22px; }
+.slider-label { font-size: 14px; font-weight: 600; }
 .slider.thin { height: 7px; transition: height .25s var(--spring); overflow: visible; background: var(--fill-2); }
 .slider.thin .slider-fill { background: var(--label); opacity: .85; }
 .slider.thin::before { content: ""; position: absolute; inset: -14px 0; } /* bigger touch target */
@@ -362,7 +360,7 @@ code { font: 12px var(--mono); }
 .pc[data-state="online"] .pc-icon { background: linear-gradient(180deg, #5ac8fa, #007aff); }
 .pc .dot { background: var(--label-3); }
 .pc[data-state="online"] .dot { background: var(--green); }
-.pc[data-state="waking"] .dot { background: var(--orange); animation: pulse 1s ease-in-out infinite; }
+.pc[data-state="waking"] .dot { background: var(--orange); }
 .wake { background: var(--orange); }
 .pc[data-state="online"] .wake { display: none; }
 
@@ -384,7 +382,7 @@ code { font: 12px var(--mono); }
 }
 .shortcut:hover:not(:disabled) { filter: brightness(1.06); }
 .shortcut:active:not(:disabled) { transform: scale(0.95); }
-.shortcut:disabled { opacity: 0.4; filter: saturate(0.4); }
+.shortcut:disabled { opacity: 0.4; }
 .shortcut .emo { font-size: 24px; line-height: 1; }
 .shortcut .lbl { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; }
 .shortcut kbd { position: absolute; top: 10px; right: 10px; font: 600 10px var(--mono); padding: 2px 6px; border-radius: 6px; background: rgba(0,0,0,0.18); color: rgba(255,255,255,0.9); }
@@ -412,7 +410,7 @@ dialog.sheet form { display: flex; flex-direction: column; min-height: 0; max-he
 .sheet-bar {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
   height: 56px; padding: 0 12px; flex: none;
-  background: var(--material); backdrop-filter: blur(30px) saturate(180%);
+  background: var(--material);
   border-bottom: 0.5px solid var(--separator);
 }
 .sheet-bar h2 { font-size: 17px; }
@@ -487,16 +485,14 @@ dialog.sheet form { display: flex; flex-direction: column; min-height: 0; max-he
 
 /* ---------------------------------------------------------------- reduce transparency */
 :root[data-solid] .card, :root[data-solid] .pill, :root[data-solid] .glass-btn, :root[data-solid] .sheet-bar {
-  backdrop-filter: none; background: var(--material-solid);
+  background: var(--material-solid);
 }
 :root[data-solid] .wp-art { display: none; }
 @media (prefers-reduced-transparency: reduce) {
-  .card, .pill, .glass-btn, .sheet-bar { backdrop-filter: none; background: var(--material-solid); }
+  .card, .pill, .glass-btn, .sheet-bar { background: var(--material-solid); }
   .wp-art { display: none; }
 }
 
-@keyframes pulse { 50% { opacity: 0.35; } }
-@keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
 @keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
 @keyframes sheet-in { from { transform: translateY(24px) scale(0.98); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
