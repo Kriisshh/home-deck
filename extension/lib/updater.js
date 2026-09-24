@@ -79,8 +79,32 @@ export async function linkFolder() {
     throw new Error("That folder doesn't contain Home Deck's manifest.json - pick the folder you loaded the extension from");
   }
   if (manifest.name !== chrome.runtime.getManifest().name) throw new Error("That folder holds a different extension");
+  await verifyLoadedFolder(dir);
   await setHandle(dir);
   return dir.name;
+}
+
+/**
+ * Prove `dir` is the exact folder Chrome runs Home Deck from, and that it's writable: write a
+ * random probe file into it and read it back through Home Deck's own chrome-extension:// URL.
+ * (Unpacked extensions are served live from disk.)
+ */
+export async function verifyLoadedFolder(dir) {
+  const name = `link-check-${crypto.randomUUID().slice(0, 8)}.txt`;
+  const value = crypto.randomUUID();
+  try {
+    await writeFile(dir, name, new TextEncoder().encode(value));
+  } catch {
+    throw new Error("Home Deck can't write to that folder. If you loaded it straight from the zip, copy the extension folder into My files, load that copy in chrome://extensions, and pick it here.");
+  }
+  let seen = null;
+  try {
+    seen = await (await fetch(chrome.runtime.getURL(name), { cache: 'no-store' })).text();
+  } catch { /* not served: different folder */ }
+  await dir.removeEntry(name).catch(() => {});
+  if (seen !== value) {
+    throw new Error('That is a different copy of Home Deck from the one Chrome runs. In chrome://extensions, open Home Deck → Details and pick the folder shown under "Loaded from".');
+  }
 }
 
 /** 'none' (not linked) | 'granted' | 'prompt' (needs a tap to re-allow access) */
@@ -147,6 +171,14 @@ export async function installUpdate({ target, sha, reload = true, onStatus = () 
   downloads.sort(([a], [b]) => (a === 'manifest.json') - (b === 'manifest.json'));
   for (const [path, bytes] of downloads) await writeFile(dir, path, bytes);
 
+  if (!target) {
+    // Make sure Chrome will actually load what we just wrote before reloading into it.
+    const served = await (await fetch(chrome.runtime.getURL('manifest.json'), { cache: 'no-store' })).json().catch(() => ({}));
+    if (served.version !== manifest.version) {
+      await unlinkFolder();
+      throw new Error('The linked folder is not the one Chrome runs Home Deck from. Link the folder shown under "Loaded from" in chrome://extensions → Home Deck → Details.');
+    }
+  }
   await chrome.storage.local.set({ 'update.justInstalled': manifest.version });
   if (reload) chrome.runtime.reload();
   return manifest.version;

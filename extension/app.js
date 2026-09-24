@@ -792,13 +792,21 @@ async function checkForUpdate({ manual = false } = {}) {
   if (state === 'granted') return runUpdate();
   $('update-text').textContent = `Update to ${UPDATE.latest}`;
   $('btn-update').hidden = false;
-  if (manual && state === 'none') toast('Choose the extension folder first', true);
+  toast(`Home Deck ${UPDATE.latest} is available - tap Update at the top`);
 }
 
 async function runUpdate() {
   if (UPDATE.busy) return;
   const { state } = await updater.folderStatus();
-  if (state === 'none') return openSettings();
+  if (state === 'none') {
+    // First update: ask for the folder right here (this tap counts as the user gesture).
+    try {
+      await updater.linkFolder();
+    } catch (err) {
+      if (err.name !== 'AbortError') toast(err.message, true);
+      return;
+    }
+  }
   UPDATE.busy = true;
   $('btn-update').disabled = true;
   try {

@@ -64,7 +64,7 @@ class Config:
 
     def _create_default(self) -> None:
         data = json.loads(EXAMPLE_CONFIG_PATH.read_text(encoding="utf-8"))
-        data["token"] = secrets.token_urlsafe(24)
+        data["token"] = new_token()
         data["name"] = socket.gethostname()
         self.path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         log.info("Created %s with a new random token", self.path.name)
@@ -87,6 +87,20 @@ class Config:
     @property
     def data(self) -> dict:
         return self.reload()
+
+
+# Easy to type on another device: no l/I/1 or O/0 lookalikes, grouped like "7KQ4-M9XR".
+TOKEN_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+
+def new_token() -> str:
+    code = "".join(secrets.choice(TOKEN_ALPHABET) for _ in range(8))
+    return f"{code[:4]}-{code[4:]}"
+
+
+def normalise_token(token: str) -> str:
+    """Compare tokens ignoring case, spaces and dashes (so "7kq4 m9xr" matches "7KQ4-M9XR")."""
+    return "".join(ch for ch in token.upper() if ch not in " -")
 
 
 # --------------------------------------------------------------------------- keyboard input
@@ -548,7 +562,7 @@ class Handler(BaseHTTPRequestHandler):
         expected = self.app.config.data.get("token", "")
         header = self.headers.get("Authorization", "")
         given = header[7:] if header.startswith("Bearer ") else ""
-        return bool(expected) and secrets.compare_digest(given.encode(), expected.encode())
+        return bool(expected) and secrets.compare_digest(normalise_token(given).encode(), normalise_token(expected).encode())
 
     def do_OPTIONS(self):
         self.send_response(204)
