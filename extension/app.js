@@ -456,6 +456,7 @@ async function pollPc() {
   try {
     const media = await agent.media();
     PC.failures = 0;
+    PC.blocked = false;
     if (!PC.online) {
       PC.online = true;
       PC.wakingUntil = 0;
@@ -468,7 +469,9 @@ async function pollPc() {
     setPill('pill-pc', 'on');
   } catch (err) {
     PC.failures += 1;
-    if (err.status === 401) setPcOffline('Wrong agent token', 'error');
+    PC.blocked = !(await hasAgentAccess());
+    if (PC.blocked) setPcOffline('Chrome needs access to the PC', 'error');
+    else if (err.status === 401) setPcOffline('Wrong agent token', 'error');
     else if (PC.failures >= 2 || !PC.online) setPcOffline(PC.wakingUntil > Date.now() ? 'Waking up…' : 'Offline');
   }
   renderPc();
@@ -491,10 +494,11 @@ function setPcOffline(reason, pill = 'off') {
 let pcSig = '';
 function renderPc() {
   const waking = !PC.online && PC.wakingUntil > Date.now();
-  const sig = JSON.stringify([PC.online, waking, PC.name, PC.offlineReason, PC.actions.length]);
+  const sig = JSON.stringify([PC.online, waking, PC.blocked, PC.name, PC.offlineReason, PC.actions.length]);
   if (sig === pcSig) return;
   pcSig = sig;
-  $('pc').dataset.state = PC.online ? 'online' : waking ? 'waking' : 'offline';
+  $('pc').dataset.state = PC.online ? 'online' : PC.blocked ? 'blocked' : waking ? 'waking' : 'offline';
+  $('pc-allow').hidden = PC.online || !PC.blocked;
   $('pc-name').textContent = PC.name || 'Main PC';
   $('pc-sub').textContent = PC.online ? 'Connected' : waking ? 'Waking up…' : (PC.offlineReason || 'Offline');
   $('pc-wake').disabled = waking;
@@ -954,20 +958,21 @@ async function onSaveSettings(event) {
     if (!field) continue;
     next[k] = field.type === 'checkbox' ? field.checked : String(field.value).trim();
   }
+  next.agentUrl = normaliseUrl(next.agentUrl);
+  next.wakeUrl = normaliseUrl(next.wakeUrl);
   const opt = $('ac-select').selectedOptions[0];
   next.acModel = opt?.dataset.model || (next.acDid === settings.acDid ? settings.acModel : '');
   next.acName = opt?.dataset.name || (next.acDid === settings.acDid ? settings.acName : '');
 
   // Chrome needs explicit permission to reach LAN devices (the PC agent, the wake device).
+  // If it's refused, settings are still saved and the PC card offers an "Allow Access" button.
+  let allowed = true;
   if (isExtension) {
     const origins = [originPattern(next.agentUrl), originPattern(next.wakeUrl)].filter(Boolean);
-    if (origins.length && !(await chrome.permissions.request({ origins }))) {
-      toast('Chrome needs permission to reach your PC', true);
-      return;
-    }
+    if (origins.length) allowed = await chrome.permissions.request({ origins }).catch(() => false);
   }
 
-  if (next.agentUrl && next.agentToken && (next.agentUrl !== settings.agentUrl || next.agentToken !== settings.agentToken)) {
+  if (allowed && next.agentUrl && next.agentToken && (next.agentUrl !== settings.agentUrl || next.agentToken !== settings.agentToken)) {
     setAgentNote('Checking the PC agent…');
     try {
       const status = await new PcAgent(next.agentUrl, next.agentToken).status();
@@ -982,12 +987,36 @@ async function onSaveSettings(event) {
   await saveSettings(next);
   await applySettings(next);
   $('settings').close();
+  if (!allowed) toast('Saved. Tap "Allow Access" on the PC card so Chrome can reach it', true);
+}
+
+/** "192.168.1.94:8765" → "http://192.168.1.94:8765"; trims spaces and trailing slashes. */
+function normaliseUrl(value) {
+  const v = String(value || '').trim().replace(/\/+$/, '');
+  if (!v) return '';
+  return /^[a-z]+:\/\//i.test(v) ? v : `http://${v}`;
+}
+
+async function hasAgentAccess() {
+  if (!isExtension) return true;
+  const origin = originPattern(settings.agentUrl);
+  return !origin || chrome.permissions.contains({ origins: [origin] });
+}
+
+async function allowAgentAccess() {
+  const origins = [originPattern(settings.agentUrl), originPattern(settings.wakeUrl)].filter(Boolean);
+  if (!(await chrome.permissions.request({ origins }).catch(() => false))) return toast('Access was not allowed', true);
+  PC.blocked = false;
+  pcSig = '';
+  pollPc();
 }
 
 function wireSettings() {
   $('btn-settings').addEventListener('click', () => openSettings());
   document.querySelectorAll('[data-open-settings]').forEach((b) => b.addEventListener('click', () => openSettings()));
-  $('settings-save').addEventListener('click', onSaveSettings);
+  $('settings-form').addEventListener('submit', onSaveSettings); // Done, or Enter in any field
+  $('settings-cancel').addEventListener('click', () => $('settings').close());
+  $('pc-allow').addEventListener('click', allowAgentAccess);
   $('settings').addEventListener('close', () => qrAbort?.abort());
   $('mi-signin').addEventListener('click', startQrSignIn);
   $('qr-cancel').addEventListener('click', () => { qrAbort?.abort(); $('qr-box').hidden = true; });

@@ -362,7 +362,7 @@ code { font: 12px var(--mono); }
 .pc[data-state="online"] .dot { background: var(--green); }
 .pc[data-state="waking"] .dot { background: var(--orange); }
 .wake { background: var(--orange); }
-.pc[data-state="online"] .wake { display: none; }
+.pc[data-state="online"] .wake, .pc[data-state="blocked"] .wake { display: none; }
 
 /* ---------------------------------------------------------------- shortcuts (deck) */
 .deck { flex: 1; }

@@ -187,6 +187,7 @@
           <h2 id="pc-name">Main PC</h2>
           <p class="sub"><i class="dot"></i><span id="pc-sub">Offline</span></p>
         </div>
+        <button class="btn-filled allow" id="pc-allow" hidden>Allow Access</button>
         <button class="btn-filled wake" id="pc-wake" title="Wake PC"><svg class="i"><use href="#i-bolt"/></svg>Wake</button>
       </section>
 
@@ -204,7 +205,7 @@
   <dialog id="settings" class="sheet">
     <form method="dialog" id="settings-form">
       <header class="sheet-bar">
-        <button class="bar-btn" value="cancel" formnovalidate>Cancel</button>
+        <button type="button" class="bar-btn" id="settings-cancel">Cancel</button>
         <h2>Settings</h2>
         <button class="bar-btn strong" value="save" id="settings-save">Done</button>
       </header>
@@ -242,14 +243,14 @@
 
         <div class="group-title">Main PC</div>
         <div class="group">
-          <label class="row"><span class="row-label">Agent URL</span><input name="agentUrl" type="url" placeholder="http://192.168.1.94:8765" autocomplete="off" spellcheck="false"></label>
+          <label class="row"><span class="row-label">Agent URL</span><input name="agentUrl" type="text" inputmode="url" placeholder="192.168.1.94:8765" autocomplete="off" spellcheck="false"></label>
           <label class="row"><span class="row-label">Token</span><input name="agentToken" type="password" placeholder="from config.json" autocomplete="off"></label>
         </div>
         <p class="group-foot" id="agent-test">Shown by <code>setup.ps1</code> on the PC.</p>
 
         <div class="group-title">Wake PC</div>
         <div class="group">
-          <label class="row"><span class="row-label">Wake URL</span><input name="wakeUrl" type="url" placeholder="Optional" autocomplete="off" spellcheck="false"></label>
+          <label class="row"><span class="row-label">Wake URL</span><input name="wakeUrl" type="text" inputmode="url" placeholder="Optional" autocomplete="off" spellcheck="false"></label>
           <div class="row"><span class="row-label">Method</span>
             <div class="segmented small">
               <label><input type="radio" name="wakeMethod" value="POST"><span>POST</span></label>
