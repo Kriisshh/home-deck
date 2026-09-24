@@ -471,7 +471,7 @@ async function pollPc() {
     PC.failures += 1;
     PC.blocked = !(await hasAgentAccess());
     if (PC.blocked) setPcOffline('Chrome needs access to the PC', 'error');
-    else if (err.status === 401) setPcOffline('Wrong agent token', 'error');
+    else if (err.status === 401) setPcOffline('Wrong token - check it in Settings', 'error');
     else if (PC.failures >= 2 || !PC.online) setPcOffline(PC.wakingUntil > Date.now() ? 'Waking up…' : 'Offline');
   }
   renderPc();
@@ -862,6 +862,8 @@ async function openSettings(focusField) {
     if (field.type === 'checkbox') field.checked = !!v; else field.value = v ?? '';
   }
   setAgentNote('Shown by <code>setup.ps1</code> on the PC.');
+  $('agent-token').type = 'password';
+  $('token-eye').querySelector('use').setAttribute('href', '#i-eye');
   $('qr-box').hidden = true;
   $('settings').showModal();
   if (focusField) form.elements[focusField]?.focus();
@@ -972,22 +974,33 @@ async function onSaveSettings(event) {
     if (origins.length) allowed = await chrome.permissions.request({ origins }).catch(() => false);
   }
 
-  if (allowed && next.agentUrl && next.agentToken && (next.agentUrl !== settings.agentUrl || next.agentToken !== settings.agentToken)) {
+  qrAbort?.abort();
+  const changedAgent = next.agentUrl !== settings.agentUrl || next.agentToken !== settings.agentToken;
+  await saveSettings(next);
+  await applySettings(next);
+  if (allowed && next.agentUrl && next.agentToken && changedAgent) {
     setAgentNote('Checking the PC agent…');
     try {
       const status = await new PcAgent(next.agentUrl, next.agentToken).status();
       toast(`Connected to ${status.name}`);
     } catch (err) {
-      setAgentNote(`The agent didn't answer: ${err.message}`, 'err');
-      toast("Saved, but the PC agent didn't answer", true);
+      setAgentNote(explainAgentError(err, next.agentUrl), 'err');
+      toast(err.status === 401 ? 'Saved, but the token is wrong' : "Saved, but the PC didn't answer", true);
+      return; // keep the sheet open so the reason stays visible
     }
   }
 
-  qrAbort?.abort();
-  await saveSettings(next);
-  await applySettings(next);
   $('settings').close();
   if (!allowed) toast('Saved. Tap "Allow Access" on the PC card so Chrome can reach it', true);
+}
+
+/** Turn a failed agent request into something actionable. */
+function explainAgentError(err, url) {
+  const where = (() => { try { return new URL(url).host; } catch { return url; } })();
+  if (err.status === 401) return "The token doesn't match the PC's. Tap the eye to check it: l/I/1 and O/0 are easy to mix up.";
+  if (err.name === 'TimeoutError') return `No reply from ${where}. Make sure the Surface is on the same Wi-Fi as the PC (not a guest network or the PC's hotspot) and the PC is awake.`;
+  if (err.name === 'TypeError') return `Couldn't connect to ${where}. Check the address, and that the Home Deck agent is running on the PC.`;
+  return err.message;
 }
 
 /** "192.168.1.94:8765" → "http://192.168.1.94:8765"; trims spaces and trailing slashes. */
@@ -1017,6 +1030,27 @@ function wireSettings() {
   $('settings-form').addEventListener('submit', onSaveSettings); // Done, or Enter in any field
   $('settings-cancel').addEventListener('click', () => $('settings').close());
   $('pc-allow').addEventListener('click', allowAgentAccess);
+  $('token-eye').addEventListener('click', () => {
+    const field = $('agent-token');
+    const show = field.type === 'password';
+    field.type = show ? 'text' : 'password';
+    $('token-eye').querySelector('use').setAttribute('href', show ? '#i-eye-off' : '#i-eye');
+    $('token-eye').setAttribute('aria-label', show ? 'Hide token' : 'Show token');
+    $('token-eye').title = show ? 'Hide token' : 'Show token';
+  });
+  $('agent-test-btn').addEventListener('click', async () => {
+    const form = $('settings-form');
+    const url = normaliseUrl(form.elements.agentUrl.value);
+    const token = form.elements.agentToken.value.trim();
+    if (!url || !token) return setAgentNote('Enter the Agent URL and token first.', 'err');
+    setAgentNote('Testing…');
+    try {
+      const status = await new PcAgent(url, token).status();
+      setAgentNote(`Connected to ${status.name}. Tap Done to save.`, 'ok');
+    } catch (err) {
+      setAgentNote(explainAgentError(err, url), 'err');
+    }
+  });
   $('settings').addEventListener('close', () => qrAbort?.abort());
   $('mi-signin').addEventListener('click', startQrSignIn);
   $('qr-cancel').addEventListener('click', () => { qrAbort?.abort(); $('qr-box').hidden = true; });

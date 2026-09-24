@@ -507,6 +507,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = f"HomeDeckAgent/{VERSION}"
     protocol_version = "HTTP/1.1"
     app: "Agent"  # set on the class at startup
+    seen_clients: set[str] = set()
 
     def log_message(self, fmt, *args):
         log.debug("%s - %s", self.address_string(), fmt % args)
@@ -565,7 +566,12 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             if path.startswith("/api/"):
+                client = self.client_address[0]
+                if client not in self.seen_clients:  # one line per device, for troubleshooting
+                    self.seen_clients.add(client)
+                    log.info("First request from %s (%s %s)", client, method, path)
                 if path != "/api/ping" and not self._authorised():
+                    log.warning("Rejected request from %s: wrong or missing token", client)
                     raise HttpError(401, "Invalid or missing token")
                 self._api(method, path[5:].strip("/").split("/"))
             else:

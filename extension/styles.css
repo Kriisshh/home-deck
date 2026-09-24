@@ -518,3 +518,4 @@ dialog.sheet form { display: flex; flex-direction: column; min-height: 0; max-he
   .dial-temp { font-size: 62px; }
   .time { font-size: 30px; }
 }
+#agent-token { font-family: var(--mono); font-size: 14px; letter-spacing: 0.02em; }

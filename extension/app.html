@@ -56,6 +56,8 @@
       <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="currentColor" stroke="none"/><path d="M12 7v6" stroke="#000"/><path d="M12 16.5h.01" stroke="#000"/></symbol>
       <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.35-5.65L20 8.5"/><path d="M20 3.5v5h-5"/></symbol>
       <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5M4.5 17.5v1.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-1.5"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M9.9 5.2A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.7 17.7 0 0 1-2.9 3.9M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"/></symbol>
       <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
     </defs>
   </svg>
@@ -244,7 +246,8 @@
         <div class="group-title">Main PC</div>
         <div class="group">
           <label class="row"><span class="row-label">Agent URL</span><input name="agentUrl" type="text" inputmode="url" placeholder="192.168.1.94:8765" autocomplete="off" spellcheck="false"></label>
-          <label class="row"><span class="row-label">Token</span><input name="agentToken" type="password" placeholder="from config.json" autocomplete="off"></label>
+          <div class="row"><span class="row-label">Token</span><input name="agentToken" id="agent-token" type="password" placeholder="from config.json" autocomplete="off" spellcheck="false" aria-label="Agent token"><button type="button" class="row-icon-btn" id="token-eye" title="Show token" aria-label="Show token"><svg class="i"><use href="#i-eye"/></svg></button></div>
+          <button type="button" class="row row-action" id="agent-test-btn">Test Connection</button>
         </div>
         <p class="group-foot" id="agent-test">Shown by <code>setup.ps1</code> on the PC.</p>
 
