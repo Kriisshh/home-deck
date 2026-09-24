@@ -72,6 +72,26 @@ async function readCookie(name) {
   return all.find((c) => c.domain.endsWith('mi.com'))?.value ?? null;
 }
 
+/** Run request() and pick serviceToken out of the Set-Cookie headers of any sts.api.io.mi.com response. */
+async function captureServiceToken(request) {
+  let token = null;
+  const listener = (details) => {
+    for (const h of details.responseHeaders ?? []) {
+      const m = h.name.toLowerCase() === 'set-cookie' && /(?:^|[;,\s])serviceToken=([^;]+)/.exec(h.value ?? '');
+      if (m && m[1] && m[1] !== 'EXPIRED') token = m[1];
+    }
+  };
+  const webRequest = globalThis.chrome?.webRequest;
+  webRequest?.onHeadersReceived.addListener(listener, { urls: ['https://*.mi.com/*'] }, ['responseHeaders', 'extraHeaders']);
+  try {
+    const res = await request();
+    await res.text().catch(() => {});
+  } finally {
+    webRequest?.onHeadersReceived.removeListener(listener);
+  }
+  return token;
+}
+
 /** Make the extension's own requests to Xiaomi look like the Mi Home app (some endpoints check). */
 export async function installHeaderRules() {
   if (!chrome.declarativeNetRequest) return;
@@ -136,6 +156,7 @@ export class XiaomiCloud {
   /** Step 2: long-poll until the QR code is scanned and confirmed in the Mi Home app. */
   async waitForQrLogin({ lp, timeout }, signal) {
     const deadline = Date.now() + timeout * 1000;
+    let failures = 0;
     while (Date.now() < deadline) {
       signal?.throwIfAborted();
       let res;
@@ -143,11 +164,16 @@ export class XiaomiCloud {
         res = await fetch(lp, { credentials: 'include', signal: AbortSignal.any([signal, AbortSignal.timeout(30000)].filter(Boolean)) });
       } catch (err) {
         if (signal?.aborted) throw err;
-        continue; // long-poll timed out without a scan - ask again
+        if (err.name === 'TimeoutError') continue; // long-poll ended without a scan - ask again
+        if (++failures >= 3) throw new Error(`Can't reach Xiaomi's sign-in server (${new URL(lp).host}): ${err.message}`);
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
       }
+      failures = 0;
       if (res.ok) {
         const data = parseMi(await res.text());
         if (data.ssecurity && data.location) return this._finishLogin(data);
+        if (data.code && data.code !== 0) throw new Error(`Xiaomi sign-in failed: ${data.desc || data.description || `code ${data.code}`}`);
       }
       await new Promise((r) => setTimeout(r, 1500));
     }
@@ -155,8 +181,10 @@ export class XiaomiCloud {
   }
 
   async _finishLogin(data) {
-    await fetch(data.location, { credentials: 'include' }); // sets the serviceToken cookie
-    const serviceToken = await readCookie('serviceToken');
+    // The STS endpoint hands out the service token as a cookie. Read it from the response headers
+    // (webRequest) and fall back to the cookie jar.
+    const serviceToken = await captureServiceToken(() => fetch(data.location, { credentials: 'include' }))
+      ?? await readCookie('serviceToken');
     if (!serviceToken) throw new Error('Signed in, but Xiaomi did not hand out a service token');
     this._session = {
       userId: String(data.userId),

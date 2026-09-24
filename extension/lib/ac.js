@@ -56,7 +56,13 @@ export class AirConditioner {
     return this.set({ power: !this.state.power });
   }
 
+  /** Many Xiaomi ACs switch on when they receive any setting, so adjustments require it to be on. */
+  requireOn() {
+    if (!this.state.power) throw new Error('The AC is off - turn it on first');
+  }
+
   nudgeTemp(direction) {
+    this.requireOn();
     return this.set({ target: this.clampTemp((this.state.target ?? 26) + direction * this.tempStep) });
   }
 
@@ -65,6 +71,7 @@ export class AirConditioner {
   }
 
   nudgeFan(direction) {
+    this.requireOn();
     const options = this.fanOptions();
     const idx = options.findIndex((o) => o.value === this.state.fan);
     const next = options[Math.min(options.length - 1, Math.max(0, (idx < 0 ? 0 : idx) + direction))];

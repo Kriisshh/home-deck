@@ -245,8 +245,11 @@ function renderAc() {
   drawDial(target);
   $('ac-room').textContent = s.room != null ? `Indoor ${fmtTemp(s.room)}°` : 'Indoor --';
   const [min, max] = m.target?.range ?? [16, 31];
-  $('ac-down').disabled = target != null && target <= min;
-  $('ac-up').disabled = target != null && target >= max;
+  $('ac-down').disabled = !on || (target != null && target <= min);
+  $('ac-up').disabled = !on || (target != null && target >= max);
+  $('ac-dial').setAttribute('aria-disabled', String(!on));
+  $('ac-fan').setAttribute('aria-disabled', String(!on));
+  $('ac-fan-auto').disabled = !on;
 
   // Fan
   const levels = fanLevels();
@@ -305,6 +308,7 @@ function setPendingTarget(value, commitDelay) {
 
 function nudgeTemp(direction) {
   if (!ac) return openSettings();
+  if (!ac.state.power) return toast('The AC is off - turn it on first', true);
   setPendingTarget((AC.pendingTarget ?? ac.state.target ?? 26) + direction * ac.tempStep, 650);
 }
 
@@ -322,7 +326,7 @@ function wireDial() {
     return { temp: min + (rel / 270) * (max - min), dist: Math.hypot(x, y) / (r.width / 2) };
   };
   dial.addEventListener('pointerdown', (e) => {
-    if (!ac) return;
+    if (!ac || !ac.state.power) return;
     const { temp, dist } = valueAt(e);
     if (dist < 0.6) return; // taps on the number in the middle don't move the setpoint
     dragging = true;
