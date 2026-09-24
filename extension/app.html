@@ -55,6 +55,7 @@
       <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 9.5 17 19 7.5"/></symbol>
       <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="currentColor" stroke="none"/><path d="M12 7v6" stroke="#000"/><path d="M12 16.5h.01" stroke="#000"/></symbol>
       <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.35-5.65L20 8.5"/><path d="M20 3.5v5h-5"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5M4.5 17.5v1.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-1.5"/></symbol>
       <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
     </defs>
   </svg>
@@ -71,6 +72,7 @@
       <div class="time" id="time">--:--</div>
     </div>
     <div class="status">
+      <button class="update-pill" id="btn-update" hidden><svg class="i"><use href="#i-download"/></svg><span id="update-text">Update</span></button>
       <span class="pill" id="pill-mi" data-state="off"><i></i><span>Mi Home</span></span>
       <span class="pill" id="pill-pc" data-state="off"><i></i><span>PC</span></span>
       <button class="glass-btn" id="btn-keys" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts"><svg class="i"><use href="#i-keyboard"/></svg></button>
@@ -270,6 +272,15 @@
           <label class="row"><span class="row-label">Reduce Transparency</span><input type="checkbox" class="switch" name="reduceTransparency"></label>
         </div>
         <p class="group-foot">Reduce Transparency swaps the frosted glass for solid colors. It's lighter on older graphics chips.</p>
+
+        <div class="group-title">Updates</div>
+        <div class="group">
+          <div class="row"><span class="row-label">Version</span><span class="row-value" id="upd-version"></span></div>
+          <div class="row"><span class="row-label">Automatic Updates</span><span class="row-value" id="upd-status">Off</span></div>
+          <button type="button" class="row row-action" id="upd-link">Choose Extension Folder…</button>
+          <button type="button" class="row row-action" id="upd-check">Check for Updates Now</button>
+        </div>
+        <p class="group-foot">Choose the folder you loaded Home Deck from (for example <b>My files › Home Deck › extension</b>). Home Deck then checks GitHub each time it opens and installs new versions by itself. Files only come from github.com/Kriisshh/home-deck and are checked against GitHub's checksums before anything is replaced.</p>
 
         <div class="group-title">App</div>
         <div class="group">

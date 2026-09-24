@@ -71,5 +71,6 @@ chrome.runtime.onStartup.addListener(async () => {
 
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   await installHeaderRules();
-  if (reason === 'install') await openDeck();
+  // 'update' includes Home Deck's own self-update (lib/updater.js), which reloads the extension.
+  if (reason === 'install' || reason === 'update') await openDeck();
 });

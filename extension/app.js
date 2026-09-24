@@ -1,6 +1,7 @@
 import { AirConditioner } from './lib/ac.js';
 import { PcAgent, sendWake } from './lib/agent.js';
 import { load, loadSettings, onChange, save, saveSettings } from './lib/store.js';
+import * as updater from './lib/updater.js';
 import { NotSignedIn, XiaomiCloud, acModelFromSpec } from './lib/xiaomi.js';
 
 const $ = (id) => document.getElementById(id);
@@ -743,6 +744,89 @@ async function wakePc() {
   }
 }
 
+// ======================================================================= self-update
+
+const UPDATE = { latest: null, checkedAt: 0, busy: false };
+
+/** Runs on every start: installs silently when folder access is already granted, otherwise shows the Update button. */
+async function checkForUpdate({ manual = false } = {}) {
+  if (!isExtension || DEMO || UPDATE.busy) return;
+  UPDATE.checkedAt = Date.now();
+  try {
+    UPDATE.latest = await updater.latestVersion();
+  } catch (err) {
+    if (manual) toast(`Couldn't check for updates: ${err.message}`, true);
+    return;
+  }
+  const current = updater.currentVersion();
+  if (!updater.isNewer(UPDATE.latest, current)) {
+    $('btn-update').hidden = true;
+    if (manual) toast(`Home Deck ${current} is up to date`);
+    return;
+  }
+  const { state } = await updater.folderStatus();
+  if (state === 'granted') return runUpdate();
+  $('update-text').textContent = `Update to ${UPDATE.latest}`;
+  $('btn-update').hidden = false;
+  if (manual && state === 'none') toast('Choose the extension folder first', true);
+}
+
+async function runUpdate() {
+  if (UPDATE.busy) return;
+  const { state } = await updater.folderStatus();
+  if (state === 'none') return openSettings();
+  UPDATE.busy = true;
+  $('btn-update').disabled = true;
+  try {
+    await updater.installUpdate({ onStatus: (text) => toast(text) }); // reloads Home Deck when done
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    UPDATE.busy = false;
+    $('btn-update').disabled = false;
+  }
+}
+
+async function renderUpdateSettings() {
+  if (!isExtension) {
+    $('upd-version').textContent = 'Preview';
+    $('upd-status').textContent = 'Extension only';
+    $('upd-link').disabled = true;
+    $('upd-check').disabled = true;
+    return;
+  }
+  $('upd-version').textContent = updater.currentVersion();
+  const { state, name } = await updater.folderStatus();
+  $('upd-status').textContent = state === 'none' ? 'Off' : state === 'granted' ? `On · ${name}` : `On · ${name} (tap Update to allow)`;
+  $('upd-link').textContent = state === 'none' ? 'Choose Extension Folder…' : 'Change Extension Folder…';
+}
+
+function wireUpdates() {
+  $('btn-update').addEventListener('click', runUpdate);
+  $('upd-check').addEventListener('click', () => checkForUpdate({ manual: true }));
+  $('upd-link').addEventListener('click', async () => {
+    try {
+      const name = await updater.linkFolder();
+      toast(`Automatic updates on (${name})`);
+      await renderUpdateSettings();
+      checkForUpdate();
+    } catch (err) {
+      if (err.name !== 'AbortError') toast(err.message, true);
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && Date.now() - UPDATE.checkedAt > 6 * 3600 * 1000) checkForUpdate();
+  });
+}
+
+async function announceUpdate() {
+  if (!isExtension) return;
+  const { 'update.justInstalled': version } = await chrome.storage.local.get('update.justInstalled');
+  if (!version) return;
+  await chrome.storage.local.remove('update.justInstalled');
+  if (version === updater.currentVersion()) toast(`Updated to Home Deck ${version}`);
+}
+
 // ======================================================================= settings sheet
 
 const cloudFor = () => new XiaomiCloud($('settings-form').elements.region.value || settings.region);
@@ -759,6 +843,7 @@ async function openSettings(focusField) {
   $('qr-box').hidden = true;
   $('settings').showModal();
   if (focusField) form.elements[focusField]?.focus();
+  renderUpdateSettings();
   await renderAccount();
   await fillDevices(await load('mi.devices', []));
 }
@@ -1032,6 +1117,7 @@ function wireControls() {
   wireVolume();
   wireSeek();
   wireSettings();
+  wireUpdates();
 }
 
 async function main() {
@@ -1045,6 +1131,8 @@ async function main() {
     if (changes.settings) applySettings({ ...settings, ...changes.settings.newValue });
   });
   if (!DEMO && !settings.acDid && !settings.agentUrl) openSettings();
+  announceUpdate();
+  checkForUpdate();
 }
 
 main();

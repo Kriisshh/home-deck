@@ -11,7 +11,7 @@ $shortcut = Join-Path ([Environment]::GetFolderPath('Startup')) 'Home Deck Agent
 if ($Uninstall) {
     if (Test-Path $shortcut) { Remove-Item $shortcut -Confirm:$false; Write-Host 'Removed logon shortcut.' }
     Get-CimInstance Win32_Process -Filter "Name = 'pythonw.exe'" |
-        Where-Object { $_.CommandLine -like '*agent.py*' } |
+        Where-Object { $_.CommandLine -like '*pc-agent*' } |
         ForEach-Object { Stop-Process -Id $_.ProcessId -Confirm:$false; Write-Host "Stopped agent (PID $($_.ProcessId))." }
     return
 }
@@ -23,19 +23,19 @@ if (-not (Test-Path (Join-Path $venv 'Scripts\python.exe'))) {
 Write-Host 'Installing dependencies...'
 & (Join-Path $venv 'Scripts\python.exe') -m pip install --quiet --disable-pip-version-check -r (Join-Path $here 'requirements.txt')
 
-# Start at logon, windowless. It must run inside your user session (not as a service) so it can
+# Start at logon, windowless, updating from GitHub first (launcher.py). It must run inside your user session (not as a service) so it can
 # see Spotify and send keystrokes.
 $shell = New-Object -ComObject WScript.Shell
 $lnk = $shell.CreateShortcut($shortcut)
 $lnk.TargetPath = Join-Path $venv 'Scripts\pythonw.exe'
-$lnk.Arguments = '"' + (Join-Path $here 'agent.py') + '"'
+$lnk.Arguments = '"' + (Join-Path $here 'launcher.py') + '"'   # updates from GitHub, then runs agent.py
 $lnk.WorkingDirectory = $here
 $lnk.Description = 'Home Deck PC agent'
 $lnk.Save()
 Write-Host "Added logon shortcut: $shortcut"
 
 $running = Get-CimInstance Win32_Process -Filter "Name = 'pythonw.exe' OR Name = 'python.exe'" |
-    Where-Object { $_.CommandLine -like '*agent.py*' }
+    Where-Object { $_.CommandLine -like '*agent.py*' -or $_.CommandLine -like '*launcher.py*' }
 if (-not $running) {
     Start-Process -FilePath $lnk.TargetPath -ArgumentList $lnk.Arguments -WorkingDirectory $here
     Start-Sleep -Seconds 3

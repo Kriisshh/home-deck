@@ -153,6 +153,16 @@ code { font: 12px var(--mono); }
 .pill[data-state="busy"] i { background: var(--orange); animation: pulse 1.2s ease-in-out infinite; }
 .pill[data-state="error"] i { background: var(--red); }
 
+.update-pill {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px 0 11px;
+  border-radius: 999px; background: var(--blue); color: #fff; font-size: 13px; font-weight: 600;
+  transition: transform .25s var(--spring), filter .2s;
+}
+.update-pill .i { width: 16px; height: 16px; stroke-width: 2.4; }
+.update-pill:hover { filter: brightness(1.08); }
+.update-pill:active { transform: scale(0.94); }
+.update-pill:disabled { opacity: .7; }
+
 .glass-btn {
   display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
   background: var(--material); backdrop-filter: blur(30px) saturate(180%);

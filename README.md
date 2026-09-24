@@ -61,8 +61,15 @@ Needs Python 3.11+ ([python.org](https://www.python.org/downloads/)).
      click **Allow**.
    - Tap **Done**. The *Mi Home* and *PC* dots at the top turn green.
 
-**Updating later:** download the new zip, replace the files in your `extension` folder, then click the
-↻ reload icon on Home Deck's card in `chrome://extensions`. Your settings and sign-in are kept.
+### Automatic updates
+
+- **PC:** nothing to do. Every time you log in, the agent pulls the latest version from GitHub before it
+  starts (see `pc-agent/update.log`).
+- **Surface:** one-time step. In Home Deck → ⚙ Settings → **Updates** → **Choose Extension Folder…**, pick
+  the `extension` folder you loaded (e.g. `My files/Home Deck/extension`) and allow access. From then on,
+  Home Deck checks GitHub each time it opens, installs new versions itself and reloads. If Chrome asks
+  to re-confirm folder access, a blue **Update** button appears at the top; one tap installs it.
+  Files only come from this repository and are checked against GitHub's checksums first.
 
 ## Keyboard shortcuts
 
