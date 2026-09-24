@@ -768,14 +768,16 @@ async function wakePc() {
 
 // ======================================================================= self-update
 
-const UPDATE = { latest: null, checkedAt: 0, busy: false };
+const UPDATE = { latest: null, sha: null, checkedAt: 0, busy: false };
 
 /** Runs on every start: installs silently when folder access is already granted, otherwise shows the Update button. */
 async function checkForUpdate({ manual = false } = {}) {
   if (!isExtension || DEMO || UPDATE.busy) return;
   UPDATE.checkedAt = Date.now();
   try {
-    UPDATE.latest = await updater.latestVersion();
+    const latest = await updater.latestVersion();
+    UPDATE.latest = latest.version;
+    UPDATE.sha = latest.sha;
   } catch (err) {
     if (manual) toast(`Couldn't check for updates: ${err.message}`, true);
     return;
@@ -800,7 +802,7 @@ async function runUpdate() {
   UPDATE.busy = true;
   $('btn-update').disabled = true;
   try {
-    await updater.installUpdate({ onStatus: (text) => toast(text) }); // reloads Home Deck when done
+    await updater.installUpdate({ sha: UPDATE.sha, onStatus: (text) => toast(text) }); // reloads Home Deck when done
   } catch (err) {
     toast(err.message, true);
   } finally {

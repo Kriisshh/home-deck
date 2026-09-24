@@ -8,8 +8,10 @@
 
 const REPO = 'Kriisshh/home-deck';
 const BRANCH = 'main';
-const RAW = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/`;
-const TREE = `https://api.github.com/repos/${REPO}/git/trees/${BRANCH}?recursive=1`;
+const API = `https://api.github.com/repos/${REPO}`;
+// Files are fetched by commit SHA: those URLs never change, so GitHub's 5-minute CDN cache on
+// branch URLs (raw .../main/...) can't serve an old version right after a release.
+const raw = (sha, path) => `https://raw.githubusercontent.com/${REPO}/${sha}/${path.split('/').map(encodeURIComponent).join('/')}`;
 const PREFIX = 'extension/';
 
 // ---------------------------------------------------------------- tiny IndexedDB store for the folder handle
@@ -51,10 +53,18 @@ export function isNewer(a, b) {
   return false;
 }
 
-export async function latestVersion() {
-  const res = await fetch(`${RAW}${PREFIX}manifest.json`, { cache: 'no-store' });
+async function latestCommit() {
+  const res = await fetch(`${API}/commits/${BRANCH}`, { cache: 'no-store', headers: { Accept: 'application/vnd.github+json' } });
   if (!res.ok) throw new Error(`GitHub returned HTTP ${res.status}`);
-  return (await res.json()).version;
+  return (await res.json()).sha;
+}
+
+/** { version, sha } of the newest release on GitHub. */
+export async function latestVersion() {
+  const sha = await latestCommit();
+  const res = await fetch(raw(sha, `${PREFIX}manifest.json`));
+  if (!res.ok) throw new Error(`GitHub returned HTTP ${res.status}`);
+  return { version: (await res.json()).version, sha };
 }
 
 // ---------------------------------------------------------------- folder link
@@ -104,7 +114,7 @@ async function writeFile(root, path, bytes) {
  * `target` defaults to the linked folder; tests can pass any FileSystemDirectoryHandle.
  * Must be called from a user gesture if the folder permission is 'prompt'.
  */
-export async function installUpdate({ target, reload = true, onStatus = () => {} } = {}) {
+export async function installUpdate({ target, sha, reload = true, onStatus = () => {} } = {}) {
   const dir = target ?? await getHandle();
   if (!dir) throw new Error('Link the extension folder in Settings first');
   if (!target && (await dir.requestPermission({ mode: 'readwrite' })) !== 'granted') {
@@ -112,7 +122,8 @@ export async function installUpdate({ target, reload = true, onStatus = () => {}
   }
 
   onStatus('Checking files…');
-  const treeRes = await fetch(TREE, { cache: 'no-store' });
+  sha ??= await latestCommit();
+  const treeRes = await fetch(`${API}/git/trees/${sha}?recursive=1`);
   if (!treeRes.ok) throw new Error(`GitHub returned HTTP ${treeRes.status}`);
   const files = (await treeRes.json()).tree.filter((t) => t.type === 'blob' && t.path.startsWith(PREFIX));
   if (!files.some((f) => f.path === `${PREFIX}manifest.json`)) throw new Error('The update on GitHub looks incomplete');
@@ -120,12 +131,11 @@ export async function installUpdate({ target, reload = true, onStatus = () => {}
   // Download and verify everything before touching the folder, so a failed update changes nothing.
   onStatus(`Downloading ${files.length} files…`);
   const downloads = await Promise.all(files.map(async (f) => {
-    const url = RAW + f.path.split('/').map(encodeURIComponent).join('/');
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(raw(sha, f.path));
     if (!res.ok) throw new Error(`Couldn't download ${f.path} (HTTP ${res.status})`);
     const bytes = new Uint8Array(await res.arrayBuffer());
     if ((await gitBlobSha(bytes)) !== f.sha) {
-      throw new Error('GitHub is still publishing the newest files - try again in a few minutes');
+      throw new Error(`Downloaded ${f.path} doesn't match GitHub's checksum - try again`);
     }
     return [f.path.slice(PREFIX.length), bytes];
   }));
