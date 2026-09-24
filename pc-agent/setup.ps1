@@ -43,7 +43,11 @@ if (-not $running) {
 }
 
 $config = Get-Content (Join-Path $here 'config.json') -Raw | ConvertFrom-Json
-$ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -eq 'Dhcp' -or $_.PrefixOrigin -eq 'Manual' } |
+# Use the adapter that carries the default route (the home network), not virtual adapters such as
+# Mobile Hotspot, Hyper-V or VPNs.
+$route = Get-NetRoute -AddressFamily IPv4 -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue |
+    Sort-Object { $_.RouteMetric + $_.InterfaceMetric } | Select-Object -First 1
+$ip = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $route.InterfaceIndex |
     Where-Object { $_.IPAddress -notlike '169.254*' } | Select-Object -First 1).IPAddress
 Write-Host ''
 Write-Host 'Enter these in Home Deck -> Settings -> PC agent:'
