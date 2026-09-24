@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#1c1c1e">
+  <title>Home Deck</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <style>
+    html { background: #000; color: #f5f5f7; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; }
+    main { max-width: 440px; padding: 32px 24px; text-align: center; }
+    img { width: 72px; height: 72px; border-radius: 18px; }
+    h1 { font-size: 22px; margin: 14px 0 6px; letter-spacing: -0.02em; }
+    p { color: rgba(235, 235, 245, 0.6); margin: 6px 0; }
+    ol { text-align: left; color: rgba(235, 235, 245, 0.8); padding-left: 22px; }
+    button { font: inherit; font-weight: 600; color: #fff; background: #0a84ff; border: 0; border-radius: 999px; padding: 10px 22px; margin-top: 12px; cursor: pointer; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="icon-192.png" alt="">
+    <h1 id="title">Opening Home Deck…</h1>
+    <p id="status"></p>
+    <div id="setup" hidden>
+      <p>Add Home Deck to your shelf:</p>
+      <ol>
+        <li>Click <b>Install</b> below (or Chrome menu ⋮ → <b>Cast, save and share</b> → <b>Install page as app…</b>).</li>
+        <li>Open the Launcher, right-click <b>Home Deck</b> → <b>Pin to shelf</b>.</li>
+      </ol>
+      <button id="install" hidden>Install</button>
+    </div>
+  </main>
+  <script>
+    // This page only asks the Home Deck extension to open its own window. The extension accepts
+    // that one request from this site and nothing else (externally_connectable + onMessageExternal).
+    const $ = (id) => document.getElementById(id);
+    const hashId = new URLSearchParams(location.hash.slice(1)).get('id');
+    if (hashId) { try { localStorage.setItem('extensionId', hashId); } catch {} history.replaceState(null, '', location.pathname); }
+    let extensionId = hashId;
+    try { extensionId = extensionId || localStorage.getItem('extensionId'); } catch {}
+    const standalone = matchMedia('(display-mode: standalone), (display-mode: minimal-ui), (display-mode: window-controls-overlay)').matches;
+
+    let deferredPrompt = null;
+    addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; $('install').hidden = false; });
+    $('install').addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $('install').hidden = true; });
+
+    function openDeck() {
+      if (!extensionId || !window.chrome?.runtime?.sendMessage) {
+        $('title').textContent = 'Home Deck';
+        $('status').textContent = 'Open this page once from Home Deck → Settings → App → Add to Shelf, so it knows which extension to open.';
+        return;
+      }
+      chrome.runtime.sendMessage(extensionId, { type: 'open-deck' }, (reply) => {
+        if (chrome.runtime.lastError || !reply?.ok) {
+          $('title').textContent = 'Home Deck';
+          $('status').textContent = "Couldn't reach the Home Deck extension. Make sure it's installed and enabled, then open this page again from Home Deck → Settings → App → Add to Shelf.";
+        }
+        // On success the extension opens (or focuses) the Home Deck window and closes this one.
+      });
+    }
+
+    if (standalone) {
+      openDeck();
+    } else {
+      $('title').textContent = 'Home Deck';
+      $('status').textContent = extensionId ? 'Linked to your Home Deck extension.' : '';
+      $('setup').hidden = false;
+    }
+  </script>
+</body>
+</html>
