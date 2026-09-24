@@ -1,0 +1,23 @@
+{
+  "name": "Main PC",
+  "host": "0.0.0.0",
+  "port": 8765,
+  "token": "generated-on-first-run",
+  "media": {
+    "preferred_app": "spotify",
+    "fallback_to_any": true,
+    "app_process": "Spotify.exe"
+  },
+  "actions": [
+    { "id": "mic",        "label": "Mic mute",     "icon": "🎙️", "type": "mic_mute",  "color": "#f43f5e" },
+    { "id": "discord",    "label": "Discord mute", "icon": "🎧", "type": "hotkey",    "keys": ["ctrl", "shift", "m"], "color": "#818cf8" },
+    { "id": "snip",       "label": "Screenshot",   "icon": "✂️", "type": "hotkey",    "keys": ["win", "shift", "s"] },
+    { "id": "desktop",    "label": "Show desktop", "icon": "🗔",  "type": "hotkey",    "keys": ["win", "d"] },
+    { "id": "taskmgr",    "label": "Task Manager", "icon": "📊", "type": "hotkey",    "keys": ["ctrl", "shift", "esc"] },
+    { "id": "calc",       "label": "Calculator",   "icon": "🧮", "type": "run",       "command": "calc.exe" },
+    { "id": "youtube",    "label": "YouTube",      "icon": "▶️", "type": "open",      "target": "https://www.youtube.com", "color": "#ef4444" },
+    { "id": "lock",       "label": "Lock",         "icon": "🔒", "type": "lock",      "group": "Power" },
+    { "id": "sleep",      "label": "Sleep",        "icon": "🌙", "type": "sleep",     "confirm": true, "group": "Power" },
+    { "id": "shutdown",   "label": "Shut down",    "icon": "⏻",  "type": "shutdown",  "confirm": true, "group": "Power", "color": "#f59e0b" }
+  ]
+}

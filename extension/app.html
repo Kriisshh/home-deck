@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Home Deck</title>
+  <link rel="icon" href="icons/icon32.png" type="image/png">
+  <style>
+    /* Shown only if styles.css can't load (e.g. app.html opened as a file instead of via the extension). */
+    header, main, .island { display: none; }
+    .boot-note { font: 16px/1.5 system-ui, sans-serif; max-width: 460px; margin: 18vh auto; padding: 0 24px; color: #86868b; text-align: center; }
+    .boot-note b { color: #1d1d1f; display: block; font-size: 22px; margin-bottom: 8px; }
+    @media (prefers-color-scheme: dark) { html { background: #000; } .boot-note b { color: #f5f5f7; } }
+  </style>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <div class="boot-note"><b>Open Home Deck from the extension</b>This page only works when opened from the Home Deck extension: click its toolbar icon or press Alt+Shift+D.</div>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+      <symbol id="i-fan" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M11.4 10.4C10.3 6.8 11.5 3.1 14.7 3c2.7-.1 3.7 3 1.6 4.8-1.3 1.1-3 1.7-4.9 2.6zM13.7 13.1c3.6-.9 7.1.4 7.3 3.6.1 2.6-3 3.6-4.8 1.5-1.1-1.3-1.7-3.1-2.5-5.1zM10.6 13.3c-2.5 2.8-6.3 3.6-7.8.8-1.2-2.3 1.1-4.6 3.7-3.8 1.6.5 2.9 1.7 4.1 3z"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-cool" viewBox="0 0 24 24"><path d="M12 2.5v19M3.8 7.25l16.4 9.5M3.8 16.75l16.4-9.5"/><path d="m9.2 4.2 2.8 2 2.8-2M9.2 19.8l2.8-2 2.8 2M3.9 10.5l3.2-1.2-.4-3.4M20.1 13.5l-3.2 1.2.4 3.4M3.9 13.5l3.2 1.2-.4 3.4M20.1 10.5l-3.2-1.2.4-3.4"/></symbol>
+      <symbol id="i-heat" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.3" fill="currentColor"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.5 1.5M17.2 17.2l1.5 1.5M5.3 18.7l1.5-1.5M17.2 6.8l1.5-1.5"/></symbol>
+      <symbol id="i-dry" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 2.6c3.5 4.1 6.4 7.7 6.4 11.3a6.4 6.4 0 0 1-12.8 0c0-3.6 2.9-7.2 6.4-11.3z"/></symbol>
+      <symbol id="i-fan_only" viewBox="0 0 24 24"><path d="M3 8.5h10.5a2.6 2.6 0 1 0-2.6-2.6"/><path d="M3 12.5h15.4a2.6 2.6 0 1 1-2.6 2.6"/><path d="M3 16.5h7"/></symbol>
+      <symbol id="i-auto" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.35-5.65"/><path d="M20 4v4.6h-4.6"/></symbol>
+      <symbol id="i-swing" viewBox="0 0 24 24"><path d="m7.5 7 4.5-4.5L16.5 7M7.5 17l4.5 4.5 4.5-4.5M12 3v18"/></symbol>
+      <symbol id="i-leaf" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M20.5 3.5c-9.3 0-15.5 3.6-15.5 10.3 0 1.6.5 3 1.3 4.2 1.9-5.2 5.8-8 9.9-9.2-3.7 2.1-7 5.3-8.7 9.8 1 .6 2.3.9 3.7.9 6.5 0 9.3-6.6 9.3-16z"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M20.6 14.7A8.7 8.7 0 0 1 9.3 3.4a8.7 8.7 0 1 0 11.3 11.3z"/></symbol>
+      <symbol id="i-flame" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 22c-4.1 0-7-2.9-7-6.7 0-3.3 2.3-5.4 3.9-7.4.3 1.6 1.2 2.8 2.2 3.3-.2-3.6 1.4-6.7 4.5-9.4.2 3.7 1.7 5.7 3.2 7.7 1 1.4 1.4 2.9 1.4 4.9 0 4.4-3.1 7.6-8.2 7.6z"/></symbol>
+      <symbol id="i-sparkles" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M10 2.5l1.7 4.6 4.6 1.7-4.6 1.7L10 15.1l-1.7-4.6-4.6-1.7 4.6-1.7zM17.6 13l1 2.7 2.7 1-2.7 1-1 2.8-1-2.8-2.7-1 2.7-1z"/></symbol>
+      <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9.2 18.2h5.6M10.2 21.2h3.6"/><path fill="currentColor" d="M12 2.8a6.2 6.2 0 0 0-3.7 11.2c.6.5 1 1.3 1 2.2h5.4c0-.9.4-1.7 1-2.2A6.2 6.2 0 0 0 12 2.8z"/></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 2.5a6.1 6.1 0 0 0-6.1 6.1v4.3L4.2 16.2a.8.8 0 0 0 .7 1.2h14.2a.8.8 0 0 0 .7-1.2l-1.7-3.3V8.6A6.1 6.1 0 0 0 12 2.5zM9.4 19a2.6 2.6 0 0 0 5.2 0z"/></symbol>
+      <symbol id="i-thermo" viewBox="0 0 24 24"><path d="M14 4.2v10.3a4 4 0 1 1-4 0V4.2a2 2 0 0 1 4 0z"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M7 4v16c0 .8.9 1.3 1.6.9l12.8-8a1 1 0 0 0 0-1.8L8.6 3.1C7.9 2.7 7 3.2 7 4z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><rect x="5.5" y="3.5" width="4.6" height="17" rx="1.4" fill="currentColor" stroke="none"/><rect x="13.9" y="3.5" width="4.6" height="17" rx="1.4" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-next" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M1.5 6.4v11.2c0 .8.9 1.3 1.5.8l7.8-5.5v4.7c0 .8.9 1.3 1.5.8l9.3-6.5a1 1 0 0 0 0-1.6L12.3 4.8c-.6-.5-1.5 0-1.5.8v4.7L3 4.8c-.6-.5-1.5 0-1.5.8z"/></symbol>
+      <symbol id="i-prev" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M22.5 6.4v11.2c0 .8-.9 1.3-1.5.8l-7.8-5.5v4.7c0 .8-.9 1.3-1.5.8l-9.3-6.5a1 1 0 0 1 0-1.6l9.3-6.5c.6-.5 1.5 0 1.5.8v4.7L21 4.8c.6-.5 1.5 0 1.5.8z"/></symbol>
+      <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M2.5 17.5h2c1.4 0 2.6-.7 3.4-1.8l6.2-8.4c.8-1.1 2-1.8 3.4-1.8h3.5"/><path d="m18 2.5 3 3-3 3"/><path d="M2.5 6.5h2c1.3 0 2.5.6 3.3 1.6M21 17.5h-3.5c-1.3 0-2.5-.6-3.3-1.6"/><path d="m18 14.5 3 3-3 3"/></symbol>
+      <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2.5 3 3-3 3"/><path d="M4 11.5v-1a5 5 0 0 1 5-5h11"/><path d="m7 21.5-3-3 3-3"/><path d="M20 12.5v1a5 5 0 0 1-5 5H4"/></symbol>
+      <symbol id="i-speaker" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M2.5 9.3v5.4c0 .6.4 1 1 1h3.1l4.5 3.8c.6.5 1.7.1 1.7-.8V5.3c0-.9-1.1-1.3-1.7-.8L6.6 8.3H3.5c-.6 0-1 .4-1 1z"/></symbol>
+      <symbol id="i-speaker-wave" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M1.5 9.3v5.4c0 .6.4 1 1 1h3.1l4.5 3.8c.6.5 1.7.1 1.7-.8V5.3c0-.9-1.1-1.3-1.7-.8L5.6 8.3H2.5c-.6 0-1 .4-1 1z"/><path d="M15.2 9a4.4 4.4 0 0 1 0 6M18.2 6.2a8.4 8.4 0 0 1 0 11.6"/></symbol>
+      <symbol id="i-speaker-off" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M1.5 9.3v5.4c0 .6.4 1 1 1h3.1l4.5 3.8c.6.5 1.7.1 1.7-.8V5.3c0-.9-1.1-1.3-1.7-.8L5.6 8.3H2.5c-.6 0-1 .4-1 1z"/><path d="m15.5 9.5 5 5M20.5 9.5l-5 5"/></symbol>
+      <symbol id="i-desktop" viewBox="0 0 24 24"><rect x="2.5" y="3.5" width="19" height="13" rx="2.3"/><path d="M8.5 20.5h7M12 16.5v4"/></symbol>
+      <symbol id="i-bolt" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M13.4 2.2 4.2 13.3c-.4.5 0 1.2.6 1.2h6.4l-1 7.1c-.1.8.9 1.2 1.4.6l9.2-11.1c.4-.5 0-1.2-.6-1.2h-6.4l1-7.1c.1-.8-.9-1.2-1.4-.6z"/></symbol>
+      <symbol id="i-music" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M19.5 3.3v11.4a3.1 3.1 0 1 1-2.1-2.9V7.6l-8.2 1.9v7.3a3.1 3.1 0 1 1-2.1-2.9V6.1c0-.5.3-.9.8-1l10.3-2.4c.7-.1 1.3.3 1.3.9z"/></symbol>
+      <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+      <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="5.5" width="20" height="13" rx="2.5"/><path d="M6 9.5h.01M9.5 9.5h.01M13 9.5h.01M16.5 9.5h.01M6 12.5h.01M18 12.5h.01M9 15h6"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 9.5 17 19 7.5"/></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="currentColor" stroke="none"/><path d="M12 7v6" stroke="#000"/><path d="M12 16.5h.01" stroke="#000"/></symbol>
+      <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.35-5.65L20 8.5"/><path d="M20 3.5v5h-5"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="wallpaper" aria-hidden="true">
+    <div class="wp-art" id="wp-a"></div>
+    <div class="wp-art" id="wp-b"></div>
+    <div class="wp-scrim"></div>
+  </div>
+
+  <header class="topbar">
+    <div class="title">
+      <div class="date" id="date"></div>
+      <div class="time" id="time">--:--</div>
+    </div>
+    <div class="status">
+      <span class="pill" id="pill-mi" data-state="off"><i></i><span>Mi Home</span></span>
+      <span class="pill" id="pill-pc" data-state="off"><i></i><span>PC</span></span>
+      <button class="glass-btn" id="btn-keys" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts"><svg class="i"><use href="#i-keyboard"/></svg></button>
+      <button class="glass-btn" id="btn-settings" title="Settings (,)" aria-label="Settings"><svg class="i"><use href="#i-gear"/></svg></button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ================= Air conditioner ================= -->
+    <section class="card climate" id="climate" data-mode="auto" data-power="off" data-ready="false" aria-label="Air conditioner">
+      <header class="card-head">
+        <div class="head-icon" id="ac-head-icon"><svg class="i"><use href="#i-cool"/></svg></div>
+        <div class="head-text">
+          <h2 id="ac-name">Air Conditioner</h2>
+          <p class="sub" id="ac-sub">Not set up</p>
+        </div>
+        <button class="cc-toggle" id="ac-power" aria-pressed="false" aria-label="Power" title="Power (P)"><svg class="i"><use href="#i-power"/></svg></button>
+      </header>
+
+      <div class="thermostat">
+        <button class="glass-btn lg" id="ac-down" aria-label="Lower temperature" title="Cooler (↓)"><svg class="i"><use href="#i-minus"/></svg></button>
+        <div class="dial" id="ac-dial" role="slider" tabindex="0" aria-label="Target temperature">
+          <svg viewBox="0 0 240 240" aria-hidden="true">
+            <defs>
+              <linearGradient id="dial-grad" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0" class="stop-a"/>
+                <stop offset="1" class="stop-b"/>
+              </linearGradient>
+            </defs>
+            <circle class="track" cx="120" cy="120" r="100"/>
+            <circle class="value" id="ac-arc" cx="120" cy="120" r="100"/>
+            <circle class="knob" id="ac-knob" cx="120" cy="20" r="12"/>
+          </svg>
+          <div class="dial-center">
+            <div class="dial-mode" id="ac-action">Off</div>
+            <div class="dial-temp"><span id="ac-target">--</span><span class="deg">°</span></div>
+            <div class="dial-room" id="ac-room">Indoor --</div>
+          </div>
+        </div>
+        <button class="glass-btn lg" id="ac-up" aria-label="Raise temperature" title="Warmer (↑)"><svg class="i"><use href="#i-plus"/></svg></button>
+      </div>
+
+      <div class="segmented" id="ac-modes" role="group" aria-label="Mode"></div>
+
+      <div class="fan-row" id="ac-fan-row">
+        <div class="slider thick" id="ac-fan" role="slider" tabindex="0" aria-label="Fan speed" title="Fan ([ / ])">
+          <div class="slider-fill"></div>
+          <svg class="i slider-icon"><use href="#i-fan"/></svg>
+          <span class="slider-label" id="ac-fan-label">Fan</span>
+        </div>
+        <button class="cc-toggle auto-btn" id="ac-fan-auto" aria-pressed="false" title="Automatic fan speed">Auto</button>
+      </div>
+
+      <div class="toggles" id="ac-extras"></div>
+      <div class="stats" id="ac-stats"></div>
+
+      <div class="card-empty">
+        <div class="head-icon big"><svg class="i"><use href="#i-cool"/></svg></div>
+        <p><b>Add your air conditioner</b><br>Sign in to Mi Home and choose your AC.</p>
+        <button class="btn-filled" data-open-settings>Open Settings</button>
+      </div>
+    </section>
+
+    <!-- ================= Now playing ================= -->
+    <section class="card player" id="player" data-state="offline" data-playing="false" aria-label="Now playing">
+      <header class="card-head">
+        <div class="head-icon music"><svg class="i"><use href="#i-music"/></svg></div>
+        <div class="head-text">
+          <h2 id="np-app">Spotify</h2>
+          <p class="sub" id="np-sub">PC offline</p>
+        </div>
+      </header>
+      <div class="art-wrap">
+        <div class="art" id="np-art-wrap">
+          <img id="np-art" alt="" hidden>
+          <svg class="i art-ph"><use href="#i-music"/></svg>
+        </div>
+      </div>
+      <div class="np-meta">
+        <div class="np-title" id="np-title">Not Playing</div>
+        <div class="np-artist" id="np-artist">&nbsp;</div>
+      </div>
+      <div class="scrubber" id="np-progress" aria-label="Seek">
+        <div class="scrub-track"><div class="scrub-fill" id="np-fill"></div></div>
+        <div class="scrub-times"><span id="np-pos">0:00</span><span id="np-dur">-0:00</span></div>
+      </div>
+      <div class="transport">
+        <button class="tbtn side" id="np-shuffle" aria-label="Shuffle" title="Shuffle (S)"><svg class="i"><use href="#i-shuffle"/></svg></button>
+        <button class="tbtn" id="np-prev" aria-label="Previous" title="Previous (←)"><svg class="i"><use href="#i-prev"/></svg></button>
+        <button class="tbtn play" id="np-play" aria-label="Play/Pause" title="Play/Pause (Space)"><svg class="i"><use href="#i-play"/></svg></button>
+        <button class="tbtn" id="np-next" aria-label="Next" title="Next (→)"><svg class="i"><use href="#i-next"/></svg></button>
+        <button class="tbtn side" id="np-repeat" aria-label="Repeat" title="Repeat (R)"><svg class="i"><use href="#i-repeat"/></svg><b class="repeat-one">1</b></button>
+      </div>
+      <div class="volume">
+        <button class="tbtn mini" id="vol-mute" aria-label="Mute" title="Mute (M)"><svg class="i"><use href="#i-speaker"/></svg></button>
+        <div class="slider thin" id="vol-slider" role="slider" tabindex="0" aria-label="Volume"><div class="slider-fill"></div></div>
+        <svg class="i vol-hi"><use href="#i-speaker-wave"/></svg>
+      </div>
+      <div class="vol-foot">
+        <span id="vol-val"></span>
+        <div class="segmented mini" id="vol-target" role="group" aria-label="Volume control">
+          <button type="button" data-target="app" title="Spotify's own volume">Spotify</button><button type="button" data-target="system" title="Windows master volume">PC</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PC + deck ================= -->
+    <section class="stack">
+      <section class="card pc" id="pc" data-state="offline" aria-label="Main PC">
+        <div class="pc-icon"><svg class="i"><use href="#i-desktop"/></svg></div>
+        <div class="head-text">
+          <h2 id="pc-name">Main PC</h2>
+          <p class="sub"><i class="dot"></i><span id="pc-sub">Offline</span></p>
+        </div>
+        <button class="btn-filled wake" id="pc-wake" title="Wake PC (W)"><svg class="i"><use href="#i-bolt"/></svg>Wake</button>
+      </section>
+
+      <section class="card deck" id="deck" data-empty="true" aria-label="Shortcuts">
+        <header class="card-head">
+          <div class="head-text"><h2>Shortcuts</h2></div>
+        </header>
+        <div class="deck-grid" id="deck-grid"></div>
+        <div class="deck-empty" id="deck-empty">Buttons appear here when the PC agent is online.</div>
+      </section>
+    </section>
+  </main>
+
+  <!-- ================= Settings sheet ================= -->
+  <dialog id="settings" class="sheet">
+    <form method="dialog" id="settings-form">
+      <header class="sheet-bar">
+        <button class="bar-btn" value="cancel" formnovalidate>Cancel</button>
+        <h2>Settings</h2>
+        <button class="bar-btn strong" value="save" id="settings-save">Done</button>
+      </header>
+      <div class="sheet-body">
+        <div class="group-title">Mi Home</div>
+        <div class="group">
+          <div class="row"><span class="row-label">Account</span><span class="row-value" id="mi-account">Not signed in</span></div>
+          <button type="button" class="row row-action" id="mi-signin">Sign In with QR Code</button>
+          <div class="row qr-row" id="qr-box" hidden>
+            <img id="qr-img" alt="Xiaomi sign-in QR code">
+            <div class="qr-text">
+              <b>Scan with the Mi Home app</b>
+              <span>On your phone: Mi Home → <b>+</b> → <b>Scan</b>, then confirm the sign-in.</span>
+              <span class="qr-status" id="qr-status">Waiting for scan…</span>
+              <button type="button" class="link-btn" id="qr-cancel">Cancel</button>
+            </div>
+          </div>
+          <label class="row"><span class="row-label">Region</span>
+            <select name="region">
+              <option value="cn">Mainland China</option>
+              <option value="i2">India</option>
+              <option value="sg">Singapore</option>
+              <option value="de">Europe</option>
+              <option value="us">United States</option>
+              <option value="ru">Russia</option>
+            </select>
+          </label>
+          <div class="row"><span class="row-label">Air Conditioner</span>
+            <select name="acDid" id="ac-select" aria-label="Air conditioner"><option value="">Sign in first</option></select>
+            <button type="button" class="row-icon-btn" id="ac-reload" title="Reload device list" aria-label="Reload device list"><svg class="i"><use href="#i-reload"/></svg></button>
+          </div>
+          <button type="button" class="row row-action destructive" id="mi-signout" hidden>Sign Out</button>
+        </div>
+        <p class="group-foot">Home Deck talks to Xiaomi's cloud the same way the Mi Home app does. Your password never passes through it.</p>
+
+        <div class="group-title">Main PC</div>
+        <div class="group">
+          <label class="row"><span class="row-label">Agent URL</span><input name="agentUrl" type="url" placeholder="http://192.168.1.94:8765" autocomplete="off" spellcheck="false"></label>
+          <label class="row"><span class="row-label">Token</span><input name="agentToken" type="password" placeholder="from config.json" autocomplete="off"></label>
+        </div>
+        <p class="group-foot" id="agent-test">Shown by <code>setup.ps1</code> on the PC.</p>
+
+        <div class="group-title">Wake PC</div>
+        <div class="group">
+          <label class="row"><span class="row-label">Wake URL</span><input name="wakeUrl" type="url" placeholder="Optional" autocomplete="off" spellcheck="false"></label>
+          <div class="row"><span class="row-label">Method</span>
+            <div class="segmented small">
+              <label><input type="radio" name="wakeMethod" value="POST"><span>POST</span></label>
+              <label><input type="radio" name="wakeMethod" value="GET"><span>GET</span></label>
+            </div>
+          </div>
+          <label class="row"><span class="row-label">Body</span><input name="wakeBody" placeholder="Optional JSON" autocomplete="off" spellcheck="false"></label>
+        </div>
+        <p class="group-foot">Chrome can't send Wake-on-LAN packets itself. Point this at an always-on device that can, for example an ESPHome board: <code>POST http://wake-pc.local/button/wake_pc/press</code></p>
+
+        <div class="group-title">Appearance</div>
+        <div class="group">
+          <div class="row"><span class="row-label">Theme</span>
+            <div class="segmented small">
+              <label><input type="radio" name="appearance" value="auto"><span>Automatic</span></label>
+              <label><input type="radio" name="appearance" value="light"><span>Light</span></label>
+              <label><input type="radio" name="appearance" value="dark"><span>Dark</span></label>
+            </div>
+          </div>
+          <label class="row"><span class="row-label">Reduce Transparency</span><input type="checkbox" class="switch" name="reduceTransparency"></label>
+        </div>
+        <p class="group-foot">Reduce Transparency swaps the frosted glass for solid colors. It's lighter on older graphics chips.</p>
+
+        <div class="group-title">App</div>
+        <div class="group">
+          <label class="row"><span class="row-label">Open When Chrome Starts</span><input type="checkbox" class="switch" name="openOnStartup"></label>
+          <label class="row"><span class="row-label">Window</span>
+            <select name="windowMode">
+              <option value="popup">App Window</option>
+              <option value="maximized">Maximized</option>
+              <option value="fullscreen">Full Screen</option>
+            </select>
+          </label>
+          <button type="button" class="row row-link" id="open-shortcuts"><span class="row-label">Chrome-Wide Shortcuts</span><svg class="i chev"><use href="#i-chevron"/></svg></button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ================= Shortcuts sheet ================= -->
+  <dialog id="keys" class="sheet">
+    <header class="sheet-bar">
+      <span></span>
+      <h2>Keyboard Shortcuts</h2>
+      <button class="bar-btn strong" id="keys-close">Done</button>
+    </header>
+    <div class="sheet-body" id="keys-body"></div>
+  </dialog>
+
+  <div class="island" id="toast" role="status" aria-live="polite"><svg class="i island-icon"><use href="#i-check"/></svg><span id="toast-text"></span></div>
+</body>
+</html>

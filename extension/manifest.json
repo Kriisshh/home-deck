@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Home Deck",
+  "short_name": "Deck",
+  "version": "1.0.0",
+  "description": "Control your Mi Home AC, Spotify on the main PC, and PC shortcut buttons from one touch panel.",
+  "minimum_chrome_version": "120",
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "action": {
+    "default_title": "Open Home Deck",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png" }
+  },
+  "background": { "service_worker": "background.js", "type": "module" },
+  "permissions": ["storage", "cookies", "declarativeNetRequestWithHostAccess"],
+  "host_permissions": [
+    "https://account.xiaomi.com/*",
+    "https://*.mi.com/*",
+    "https://miot-spec.org/*"
+  ],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "commands": {
+    "open-deck":        { "suggested_key": { "default": "Alt+Shift+D" }, "description": "Open Home Deck" },
+    "media-play-pause": { "suggested_key": { "default": "Alt+Shift+P" }, "description": "Spotify: play / pause" },
+    "media-next":       { "suggested_key": { "default": "Alt+Shift+Period" }, "description": "Spotify: next track" },
+    "media-previous":   { "suggested_key": { "default": "Alt+Shift+Comma" }, "description": "Spotify: previous track" },
+    "volume-up":        { "description": "Spotify: volume up" },
+    "volume-down":      { "description": "Spotify: volume down" },
+    "ac-power":         { "description": "AC: power on / off" },
+    "ac-warmer":        { "description": "AC: temperature up" },
+    "ac-cooler":        { "description": "AC: temperature down" },
+    "ac-fan-up":        { "description": "AC: fan faster" },
+    "ac-fan-down":      { "description": "AC: fan slower" }
+  }
+}

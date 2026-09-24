@@ -1,0 +1,8 @@
+# Personal / machine-specific (contains your agent token)
+pc-agent/config.json
+pc-agent/agent.log*
+
+# Python
+.venv/
+__pycache__/
+*.pyc

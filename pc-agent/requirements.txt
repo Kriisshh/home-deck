@@ -1,0 +1,8 @@
+winrt-runtime>=3.2
+winrt-Windows.Foundation>=3.2
+winrt-Windows.Foundation.Collections>=3.2
+winrt-Windows.Media>=3.2
+winrt-Windows.Media.Control>=3.2
+winrt-Windows.Storage.Streams>=3.2
+pycaw>=20240316
+comtypes>=1.4
