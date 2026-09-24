@@ -89,11 +89,11 @@
           <h2 id="ac-name">Air Conditioner</h2>
           <p class="sub" id="ac-sub">Not set up</p>
         </div>
-        <button class="cc-toggle" id="ac-power" aria-pressed="false" aria-label="Power" title="Power (P)"><svg class="i"><use href="#i-power"/></svg></button>
+        <button class="cc-toggle" id="ac-power" aria-pressed="false" aria-label="Power" title="Power"><svg class="i"><use href="#i-power"/></svg></button>
       </header>
 
       <div class="thermostat">
-        <button class="glass-btn lg" id="ac-down" aria-label="Lower temperature" title="Cooler (↓)"><svg class="i"><use href="#i-minus"/></svg></button>
+        <button class="glass-btn lg" id="ac-down" aria-label="Lower temperature" title="Cooler"><svg class="i"><use href="#i-minus"/></svg></button>
         <div class="dial" id="ac-dial" role="slider" tabindex="0" aria-label="Target temperature">
           <svg viewBox="0 0 240 240" aria-hidden="true">
             <defs>
@@ -112,13 +112,13 @@
             <div class="dial-room" id="ac-room">Indoor --</div>
           </div>
         </div>
-        <button class="glass-btn lg" id="ac-up" aria-label="Raise temperature" title="Warmer (↑)"><svg class="i"><use href="#i-plus"/></svg></button>
+        <button class="glass-btn lg" id="ac-up" aria-label="Raise temperature" title="Warmer"><svg class="i"><use href="#i-plus"/></svg></button>
       </div>
 
       <div class="segmented" id="ac-modes" role="group" aria-label="Mode"></div>
 
       <div class="fan-row" id="ac-fan-row">
-        <div class="slider thick" id="ac-fan" role="slider" tabindex="0" aria-label="Fan speed" title="Fan ([ / ])">
+        <div class="slider thick" id="ac-fan" role="slider" tabindex="0" aria-label="Fan speed" title="Fan speed">
           <div class="slider-fill"></div>
           <svg class="i slider-icon"><use href="#i-fan"/></svg>
           <span class="slider-label" id="ac-fan-label">Fan</span>
@@ -160,14 +160,14 @@
         <div class="scrub-times"><span id="np-pos">0:00</span><span id="np-dur">-0:00</span></div>
       </div>
       <div class="transport">
-        <button class="tbtn side" id="np-shuffle" aria-label="Shuffle" title="Shuffle (S)"><svg class="i"><use href="#i-shuffle"/></svg></button>
-        <button class="tbtn" id="np-prev" aria-label="Previous" title="Previous (←)"><svg class="i"><use href="#i-prev"/></svg></button>
-        <button class="tbtn play" id="np-play" aria-label="Play/Pause" title="Play/Pause (Space)"><svg class="i"><use href="#i-play"/></svg></button>
-        <button class="tbtn" id="np-next" aria-label="Next" title="Next (→)"><svg class="i"><use href="#i-next"/></svg></button>
-        <button class="tbtn side" id="np-repeat" aria-label="Repeat" title="Repeat (R)"><svg class="i"><use href="#i-repeat"/></svg><b class="repeat-one">1</b></button>
+        <button class="tbtn side" id="np-shuffle" aria-label="Shuffle" title="Shuffle"><svg class="i"><use href="#i-shuffle"/></svg></button>
+        <button class="tbtn" id="np-prev" aria-label="Previous" title="Previous (media key)"><svg class="i"><use href="#i-prev"/></svg></button>
+        <button class="tbtn play" id="np-play" aria-label="Play/Pause" title="Play/Pause (media key)"><svg class="i"><use href="#i-play"/></svg></button>
+        <button class="tbtn" id="np-next" aria-label="Next" title="Next (media key)"><svg class="i"><use href="#i-next"/></svg></button>
+        <button class="tbtn side" id="np-repeat" aria-label="Repeat" title="Repeat"><svg class="i"><use href="#i-repeat"/></svg><b class="repeat-one">1</b></button>
       </div>
       <div class="volume">
-        <button class="tbtn mini" id="vol-mute" aria-label="Mute" title="Mute (M)"><svg class="i"><use href="#i-speaker"/></svg></button>
+        <button class="tbtn mini" id="vol-mute" aria-label="Mute" title="Mute"><svg class="i"><use href="#i-speaker"/></svg></button>
         <div class="slider thin" id="vol-slider" role="slider" tabindex="0" aria-label="Volume"><div class="slider-fill"></div></div>
         <svg class="i vol-hi"><use href="#i-speaker-wave"/></svg>
       </div>
@@ -187,7 +187,7 @@
           <h2 id="pc-name">Main PC</h2>
           <p class="sub"><i class="dot"></i><span id="pc-sub">Offline</span></p>
         </div>
-        <button class="btn-filled wake" id="pc-wake" title="Wake PC (W)"><svg class="i"><use href="#i-bolt"/></svg>Wake</button>
+        <button class="btn-filled wake" id="pc-wake" title="Wake PC"><svg class="i"><use href="#i-bolt"/></svg>Wake</button>
       </section>
 
       <section class="card deck" id="deck" data-empty="true" aria-label="Shortcuts">

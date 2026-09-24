@@ -665,11 +665,6 @@ async function refreshActions() {
   } catch { /* keep the last list */ }
 }
 
-function deckKey(action, index) {
-  if (action.key) return action.key.toLowerCase();
-  return index < 9 ? String(index + 1) : null;
-}
-
 function renderDeck() {
   const groups = new Map();
   PC.actions.forEach((a, i) => {
@@ -681,14 +676,14 @@ function renderDeck() {
   for (const [group, items] of groups) {
     if (group && groups.size > 1) nodes.push(el('div', { class: 'deck-group' }, group));
     for (const [a, i] of items) {
-      const key = deckKey(a, i);
+      const key = deckKey(a);
       const color = a.color || `var(${PALETTE[i % PALETTE.length]})`;
       const btn = el('button', {
         type: 'button', class: 'shortcut', style: `--c:${color}`, disabled: !PC.online,
-        title: key ? `${a.label} (${key.toUpperCase()})` : a.label, dataset: { id: a.id },
+        title: key ? `${a.label} (${prettyCombo(key)})` : a.label, dataset: { id: a.id },
         onclick: () => runAction(a, btn),
       }, el('span', { class: 'emo' }, a.icon || '⚡️'), el('span', { class: 'lbl' }, a.label),
-      key ? el('kbd', {}, key.toUpperCase()) : null, el('span', { class: 'done' }, icon('check')));
+      key ? el('kbd', {}, prettyCombo(key)) : null, el('span', { class: 'done' }, icon('check')));
       nodes.push(btn);
     }
   }
@@ -1011,41 +1006,18 @@ async function applySettings(next) {
 
 // ======================================================================= keyboard
 
-const SHORTCUTS = [
-  ['Music', [
-    ['Space', 'Play / Pause', () => media('play_pause')],
-    ['→', 'Next Track', () => media('next'), 'arrowright'],
-    ['←', 'Previous Track', () => media('previous'), 'arrowleft'],
-    ['S', 'Shuffle', () => media('shuffle')],
-    ['R', 'Repeat', () => media('repeat')],
-    ['=', 'Volume Up', () => sendVolume({ delta: 0.05 })],
-    ['-', 'Volume Down', () => sendVolume({ delta: -0.05 })],
-    ['M', 'Mute', () => sendVolume({ muted: 'toggle' })],
-  ]],
-  ['Air Conditioner', [
-    ['↑', 'Warmer', () => nudgeTemp(1), 'arrowup'],
-    ['↓', 'Cooler', () => nudgeTemp(-1), 'arrowdown'],
-    [']', 'Fan Faster', () => acDo(() => ac.nudgeFan(1))],
-    ['[', 'Fan Slower', () => acDo(() => ac.nudgeFan(-1))],
-    ['P', 'Power', () => acDo(() => ac.togglePower())],
-  ]],
-  ['PC', [
-    ['W', 'Wake PC', () => wakePc()],
-    ['1–9', 'Shortcut buttons', null],
-  ]],
-  ['App', [
-    [',', 'Settings', () => openSettings()],
-    ['?', 'Keyboard Shortcuts', () => showKeys()],
-  ]],
-];
+// Nothing on the panel fires from a plain key press any more, so a stray key can't touch the PC or
+// the AC. Spotify follows the keyboard's media keys, shortcut buttons fire only on the combos set in
+// config.json, and the Chrome-wide shortcuts live at chrome://extensions/shortcuts.
 
-const keyMap = new Map();
-for (const [, items] of SHORTCUTS) {
-  for (const [label, , fn, code] of items) {
-    if (fn) keyMap.set(code || (label === 'Space' ? ' ' : label.toLowerCase()), fn);
-  }
-}
-keyMap.set('+', keyMap.get('='));
+const MEDIA_KEYS = {
+  MediaPlayPause: () => media('play_pause'),
+  MediaTrackNext: () => media('next'),
+  MediaTrackPrevious: () => media('previous'),
+};
+
+// Harmless UI keys only (no actions).
+const UI_KEYS = { '?': () => showKeys(), ',': () => openSettings() };
 
 function eventCombo(e) {
   const parts = [];
@@ -1058,35 +1030,48 @@ function eventCombo(e) {
   return parts.join('+');
 }
 
+const deckKey = (action) => action.key?.toLowerCase() || null;
+
 function onKeyDown(e) {
+  if (MEDIA_KEYS[e.key]) { // when the panel is focused and Chrome passes media keys through
+    e.preventDefault();
+    MEDIA_KEYS[e.key]();
+    return;
+  }
   if (document.querySelector('dialog[open]')) return;
   if (e.target.closest?.('input, select, textarea')) return;
   const combo = eventCombo(e);
-  const idx = PC.actions.findIndex((a, i) => deckKey(a, i) === combo);
-  if (idx >= 0) {
+  const action = PC.actions.find((a) => deckKey(a) === combo);
+  if (action) {
     e.preventDefault();
-    runAction(PC.actions[idx]);
+    runAction(action);
     return;
   }
-  if (e.ctrlKey || e.altKey || e.metaKey) return;
-  const fn = keyMap.get(e.key.toLowerCase()) ?? keyMap.get(e.key);
-  if (fn) {
+  if (!e.ctrlKey && !e.altKey && !e.metaKey && UI_KEYS[e.key]) {
     e.preventDefault();
-    fn();
+    UI_KEYS[e.key]();
   }
 }
 
+const prettyCombo = (combo) => combo.split('+').map((p) => (p.length === 1 ? p.toUpperCase() : p[0].toUpperCase() + p.slice(1))).join(' + ');
+
 async function showKeys() {
   const nodes = [];
-  const section = (title, rows) => {
+  const section = (title, rows, foot) => {
+    if (!rows.length) return;
     nodes.push(el('div', { class: 'group-title' }, title));
     nodes.push(el('div', { class: 'group' }, ...rows.map(([key, desc]) => el('div', { class: 'row keys-row' }, el('span', {}, desc), el('kbd', {}, key)))));
+    if (foot) nodes.push(el('p', { class: 'group-foot' }, foot));
   };
-  for (const [title, items] of SHORTCUTS) section(title, items.map(([k, d]) => [k, d]));
   if (isExtension && chrome.commands) {
     const commands = (await chrome.commands.getAll()).filter((c) => c.description);
-    section('Anywhere in Chrome', commands.map((c) => [c.shortcut || 'Not set', c.description]));
+    const pretty = (s) => s.replace('MediaPlayPause', 'Play/Pause key').replace('MediaNextTrack', 'Next key').replace('MediaPrevTrack', 'Previous key');
+    section('Anywhere in Chrome', commands.map((c) => [c.shortcut ? pretty(c.shortcut) : 'Not set', c.description]),
+      'Change or add these at chrome://extensions/shortcuts (Settings › Chrome-Wide Shortcuts).');
   }
+  section('Shortcut Buttons', PC.actions.filter(deckKey).map((a) => [prettyCombo(deckKey(a)), a.label]),
+    'Only buttons with a "key" set in config.json on the PC have a shortcut, e.g. "key": "ctrl+shift+1".');
+  section('Panel', [['?', 'This list'], [',', 'Settings']]);
   $('keys-body').replaceChildren(...nodes);
   $('keys').showModal();
 }

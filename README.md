@@ -73,41 +73,55 @@ Needs Python 3.11+ ([python.org](https://www.python.org/downloads/)).
 
 ## Keyboard shortcuts
 
-Inside the panel (press **?** to see them): **Space** play/pause · **← →** prev/next · **S** shuffle ·
-**R** repeat · **= / -** volume · **M** mute · **↑ ↓** AC temperature · **[ ]** fan · **P** AC power ·
-**W** wake PC · **1–9** deck buttons · **,** settings.
+Plain key presses never do anything on the panel, so a stray key can't touch the PC or the AC.
 
-Anywhere in Chrome (change at `chrome://extensions/shortcuts`): **Alt+Shift+D** open deck,
-**Alt+Shift+P** play/pause, **Alt+Shift+. / ,** next/previous. AC power/temperature/fan and volume can
-be given shortcuts there too.
+- **Spotify:** the keyboard's **Play/Pause, Next and Previous media keys** control Spotify on the PC
+  (anywhere in Chrome). If your keyboard has no media keys, assign any combo at
+  `chrome://extensions/shortcuts`.
+- **Anywhere in Chrome** (`chrome://extensions/shortcuts`): **Alt+Shift+D** opens the panel. AC
+  power/temperature/fan and Spotify volume can be given shortcuts there too.
+- **Shortcut buttons:** only fire from the keyboard if you give them a `"key"` in `config.json`
+  (e.g. `"ctrl+shift+1"`). Otherwise they're tap-only.
+- In the panel, **?** shows the list and **,** opens Settings.
 
-## Adding deck buttons
+## Adding shortcut buttons
 
-Edit `pc-agent/config.json`. It reloads automatically, and the laptop picks up changes within 30 s.
+Edit `pc-agent/config.json` on the PC. It reloads automatically, and the panel picks up changes within 30 s.
+
+### Game-safe keybinds (the Stream Deck way)
+
+For apps that only react to a keybind (Discord, OBS, …), use the keys **F13–F24**. Windows supports
+them, but they aren't on physical keyboards, so no game ever uses them. To bind one, open the app's
+keybind setting, click *record*, and tap the button on the Surface. The default **Discord mute**
+button sends **F13**: in Discord → Settings → Keybinds → *Add a Keybind* → *Toggle Mute* → record →
+tap **Discord mute**. Need more? Combine them: `["ctrl", "f13"]`, `["shift", "f14"]`, …
 
 ```json
-{ "id": "obs-rec", "label": "Record", "icon": "⏺️", "type": "hotkey", "keys": ["ctrl", "shift", "r"], "color": "#ef4444", "key": "q" }
+{ "id": "obs-rec", "label": "Record", "icon": "⏺️", "type": "hotkey", "keys": ["f14"], "color": "#ef4444" }
 ```
+
+### Action types
 
 | `type` | Fields | Does |
 |---|---|---|
-| `hotkey` | `keys` (e.g. `["win","shift","s"]`) | Presses a key combo |
+| `mic_mute` | `muted` (optional) | Toggles the default microphone directly |
+| `screenshot` | | Opens the Snipping Tool overlay |
+| `show_desktop` | | Shows/restores the desktop |
+| `task_manager` | | Opens Task Manager |
+| `hotkey` | `keys` (e.g. `["f13"]`) | Presses a key combo in the focused window, so prefer F13–F24 |
 | `text` | `text` | Types text |
 | `run` | `command` (string or list), `cwd` | Starts a program |
 | `open` | `target` | Opens a URL, file or folder |
 | `shell` | `command` | Runs a hidden PowerShell command |
-| `media` | `command`: `play_pause` `next` `previous` `shuffle` `repeat` | Media control |
+| `media` | `command`: `play_pause` `next` `previous` `shuffle` `repeat` | Spotify control (direct, no keystrokes) |
 | `volume` | `target` (`system`/`app`), `level` / `delta` / `muted` | Volume |
-| `mic_mute` | `muted` (optional) | Toggles the default microphone |
 | `lock` · `sleep` · `shutdown` · `restart` | `delay` (shutdown/restart) | Power |
 | `multi` | `steps`: list of actions, `{ "delay_ms": 500 }` for pauses | Macro |
 
-Optional on every action: `icon` (emoji), `color`, `group` (section heading), `confirm: true`
-(tap twice), `key` (keyboard shortcut in the panel, e.g. `"q"`, `"shift+f1"`; otherwise the first nine
-buttons get 1–9).
+Everything except `hotkey` and `text` works without sending keystrokes, so none of it can reach a game.
 
-Keystrokes go to whichever window is focused on the PC. Windows blocks sending them to apps running
-as administrator unless the agent also runs as administrator.
+Optional on every action: `icon` (emoji), `color`, `group` (section heading), `confirm: true`
+(tap twice), `key` (panel keyboard shortcut, e.g. `"ctrl+shift+1"`).
 
 ## Wake-on-LAN (later)
 

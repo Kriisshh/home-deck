@@ -31,6 +31,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 import comtypes
+import comtypes.client
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from winrt.windows.media import MediaPlaybackAutoRepeatMode as RepeatMode
 from winrt.windows.media.control import (
@@ -416,6 +417,10 @@ class Volume:
     def mic_mute(self, muted=None) -> bool:
         return self.pool.submit(self._mic_mute, muted).result(5)
 
+    def com(self, fn):
+        """Run fn on the COM thread (for other COM automation, e.g. the Windows shell)."""
+        return self.pool.submit(fn).result(5)
+
 
 # --------------------------------------------------------------------------- deck actions
 
@@ -450,6 +455,12 @@ class Actions:
                                  close_fds=True, shell=isinstance(cmd, str))
             case "open":
                 os.startfile(os.path.expandvars(action["target"]))
+            case "screenshot":  # Snipping Tool overlay, same as Win+Shift+S but without a keystroke
+                os.startfile("ms-screenclip:")
+            case "show_desktop":
+                self.volume.com(lambda: comtypes.client.CreateObject("Shell.Application").ToggleDesktop())
+            case "task_manager":  # via the shell, so Windows can elevate it
+                os.startfile("taskmgr.exe")
             case "shell":
                 subprocess.Popen(["powershell.exe", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden",
                                   "-Command", action["command"]], creationflags=CREATE_NO_WINDOW)
