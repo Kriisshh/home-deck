@@ -64,6 +64,18 @@ chrome.commands.onCommand.addListener(async (command) => {
 
 chrome.action.onClicked.addListener(openDeck);
 
+// The shelf launcher (launcher/ on GitHub Pages, installed as an app) can only ask for one thing:
+// open the Home Deck window. It then gets closed so only the Deck window remains.
+const LAUNCHER_ORIGIN = 'https://kriisshh.github.io';
+chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+  if (sender.origin !== LAUNCHER_ORIGIN || message?.type !== 'open-deck') return false;
+  openDeck().then(() => {
+    sendResponse({ ok: true });
+    if (sender.tab?.id) setTimeout(() => chrome.tabs.remove(sender.tab.id).catch(() => {}), 150);
+  });
+  return true; // respond asynchronously
+});
+
 chrome.runtime.onStartup.addListener(async () => {
   await installHeaderRules();
   if ((await loadSettings()).openOnStartup) await openDeck();

@@ -9,15 +9,15 @@
     "app_process": "Spotify.exe"
   },
   "actions": [
-    {"id": "mic", "label": "Mic mute", "icon": "🎙️", "type": "mic_mute", "color": "#f43f5e"},
-    {"id": "discord", "label": "Discord mute", "icon": "🎧", "type": "hotkey", "keys": ["f13"], "color": "#818cf8"},
-    {"id": "snip", "label": "Screenshot", "icon": "✂️", "type": "screenshot"},
-    {"id": "desktop", "label": "Show desktop", "icon": "🗔", "type": "show_desktop"},
-    {"id": "taskmgr", "label": "Task Manager", "icon": "📊", "type": "task_manager"},
-    {"id": "calc", "label": "Calculator", "icon": "🧮", "type": "run", "command": "calc.exe"},
-    {"id": "youtube", "label": "YouTube", "icon": "▶️", "type": "open", "target": "https://www.youtube.com", "color": "#ef4444"},
-    {"id": "lock", "label": "Lock", "icon": "🔒", "type": "lock", "group": "Power"},
-    {"id": "sleep", "label": "Sleep", "icon": "🌙", "type": "sleep", "confirm": true, "group": "Power"},
-    {"id": "shutdown", "label": "Shut down", "icon": "⏻", "type": "shutdown", "confirm": true, "group": "Power", "color": "#f59e0b"}
+    {"id": "mic", "label": "Mic mute", "icon": "mic", "type": "mic_mute"},
+    {"id": "discord", "label": "Discord mute", "icon": "headphones", "type": "hotkey", "keys": ["f13"]},
+    {"id": "snip", "label": "Screenshot", "icon": "scissors", "type": "screenshot"},
+    {"id": "desktop", "label": "Show desktop", "icon": "desktop", "type": "show_desktop"},
+    {"id": "taskmgr", "label": "Task Manager", "icon": "activity", "type": "task_manager"},
+    {"id": "calc", "label": "Calculator", "icon": "calculator", "type": "run", "command": "calc.exe"},
+    {"id": "youtube", "label": "YouTube", "icon": "video", "type": "open", "target": "https://www.youtube.com"},
+    {"id": "lock", "label": "Lock", "icon": "lock", "type": "lock", "group": "Power"},
+    {"id": "sleep", "label": "Sleep", "icon": "moon", "type": "sleep", "confirm": true, "group": "Power"},
+    {"id": "shutdown", "label": "Shut down", "icon": "power", "type": "shutdown", "confirm": true, "group": "Power"}
   ]
 }

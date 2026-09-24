@@ -84,9 +84,16 @@ Plain key presses never do anything on the panel, so a stray key can't touch the
   (e.g. `"ctrl+shift+1"`). Otherwise they're tap-only.
 - In the panel, **?** shows the list and **,** opens Settings.
 
-## Adding shortcut buttons
+## Shortcut buttons
 
-Edit `pc-agent/config.json` on the PC. It reloads automatically, and the panel picks up changes within 30 s.
+Tap **Edit** on the Shortcuts card to add, remove, rename, reorder and group buttons, pick icons, choose
+what each does and which key it sends. The **Function Keys** list shows which button uses each of
+F13–F24 (tap an unused one to create a button for it) and flags conflicts. Changes are saved to
+`pc-agent/config.json` on the PC.
+
+Buttons that run programs or commands (`run`, `shell`, opening a file/program) can be renamed, moved or
+deleted from the panel, but only *added* in `config.json` on the PC, so the token alone can never be
+used to run arbitrary code.
 
 ### Game-safe keybinds (the Stream Deck way)
 
@@ -122,6 +129,13 @@ Everything except `hotkey` and `text` works without sending keystrokes, so none 
 
 Optional on every action: `icon` (emoji), `color`, `group` (section heading), `confirm: true`
 (tap twice), `key` (panel keyboard shortcut, e.g. `"ctrl+shift+1"`).
+
+## Pin Home Deck to the shelf
+
+Home Deck → ⚙ Settings → **Add to Shelf…** opens a small launcher page (hosted from this repository on
+GitHub Pages). Install it (**Install** button, or Chrome menu → *Cast, save and share* → *Install page
+as app…*), then in the Launcher right-click **Home Deck** → **Pin to shelf**. Tapping it opens the
+Home Deck window and the launcher closes itself; the extension accepts only that one request from it.
 
 ## Wake-on-LAN (later)
 

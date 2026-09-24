@@ -181,7 +181,7 @@ code { font: 12px var(--mono); }
 }
 .stack { display: flex; flex-direction: column; gap: 18px; min-height: 0; }
 .card {
-  position: relative; min-height: 0; overflow: hidden;
+  position: relative; min-height: 0; overflow: hidden; contain: layout paint; /* changes inside a card never repaint the rest */
   display: flex; flex-direction: column; gap: 16px; padding: 20px;
   border-radius: var(--radius-card);
   background: var(--material);
@@ -326,7 +326,7 @@ code { font: 12px var(--mono); }
 .scrubber { cursor: pointer; touch-action: none; padding-top: 4px; }
 .scrub-track { height: 7px; border-radius: 999px; background: var(--fill-2); overflow: hidden; transition: height .25s var(--spring); }
 .scrubber:hover .scrub-track { height: 11px; }
-.scrub-fill { height: 100%; width: 100%; background: var(--label); opacity: .85; transform-origin: left; transform: scaleX(0); }
+.scrub-fill { height: 100%; width: 100%; background: var(--label); opacity: .85; transform-origin: left; transform: scaleX(0); will-change: transform; } /* own layer: moving it never repaints */
 .scrub-times { display: flex; justify-content: space-between; margin-top: 7px; font-size: 12px; font-weight: 500; color: var(--label-2); font-variant-numeric: tabular-nums; }
 
 .transport { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
@@ -372,27 +372,22 @@ code { font: 12px var(--mono); }
 }
 .deck-group { grid-column: 1 / -1; align-self: end; font-size: 13px; font-weight: 600; color: var(--label-2); padding: 6px 4px 0; }
 .shortcut {
-  --c: var(--blue);
-  position: relative; overflow: hidden; text-align: left; height: 92px;
-  display: flex; flex-direction: column; justify-content: space-between; padding: 12px 14px;
-  border-radius: 18px; color: #fff;
-  background: linear-gradient(145deg, color-mix(in srgb, var(--c) 78%, #fff), var(--c));
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--c) 30%, transparent);
-  transition: transform .3s var(--spring), filter .2s;
+  position: relative; height: 84px; text-align: left;
+  display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;
+  padding: 12px 14px; border-radius: 18px; background: var(--fill); color: var(--label);
+  transition: transform .25s var(--spring), background .15s, color .15s;
 }
-.shortcut:hover:not(:disabled) { filter: brightness(1.06); }
+.shortcut:hover:not(:disabled) { background: var(--fill-2); }
 .shortcut:active:not(:disabled) { transform: scale(0.95); }
 .shortcut:disabled { opacity: 0.4; }
-.shortcut .emo { font-size: 24px; line-height: 1; }
-.shortcut .lbl { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; }
-.shortcut kbd { position: absolute; top: 10px; right: 10px; font: 600 10px var(--mono); padding: 2px 6px; border-radius: 6px; background: rgba(0,0,0,0.18); color: rgba(255,255,255,0.9); }
-.shortcut .done { position: absolute; inset: 0; display: grid; place-items: center; background: inherit; opacity: 0; transform: scale(1.1); transition: opacity .2s, transform .35s var(--spring); }
-.shortcut .done .i { width: 34px; height: 34px; stroke-width: 3; }
-.shortcut.ok .done { opacity: 1; transform: scale(1); }
+.shortcut .i { width: 22px; height: 22px; }
+.shortcut .lbl { font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; }
+.shortcut kbd { position: absolute; top: 10px; right: 10px; font: 600 10px var(--mono); padding: 2px 6px; border-radius: 6px; background: var(--fill); color: var(--label-2); }
+.shortcut.ok { background: var(--on-fill); color: var(--on-label); }  /* flashes white like a Control Center toggle */
 .shortcut.err { animation: shake .35s; }
-.shortcut.confirm { box-shadow: 0 0 0 3px var(--label), 0 4px 14px color-mix(in srgb, var(--c) 30%, transparent); }
-.shortcut.confirm .lbl::after { content: "Tap again to confirm"; display: block; font-size: 11px; font-weight: 500; opacity: .9; }
-.shortcut.busy { filter: brightness(0.9); }
+.shortcut.confirm { box-shadow: inset 0 0 0 2px var(--orange); }
+.shortcut.confirm .lbl::after { content: "Tap again to confirm"; display: block; font-size: 11px; font-weight: 500; color: var(--orange); }
+.shortcut.busy { opacity: .7; }
 .deck-empty { color: var(--label-2); text-align: center; margin: auto; display: none; padding: 20px; }
 .deck[data-empty="true"] .deck-empty { display: block; }
 
@@ -519,3 +514,41 @@ dialog.sheet form { display: flex; flex-direction: column; min-height: 0; max-he
   .time { font-size: 30px; }
 }
 #agent-token { font-family: var(--mono); font-size: 14px; letter-spacing: 0.02em; }
+
+/* ---------------------------------------------------------------- shortcut editor */
+.card-head .link-btn { font-size: 15px; font-weight: 500; padding: 4px 2px; }
+.bar-btn { display: inline-flex; align-items: center; gap: 2px; }
+.bar-btn .i { width: 20px; height: 20px; stroke-width: 2.4; }
+.editor-group { display: flex; align-items: center; gap: 4px; text-transform: none; letter-spacing: 0; }
+.group-name { flex: 1; min-width: 0; font: inherit; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em;
+  color: var(--label-2); background: transparent; border: 0; border-radius: 6px; padding: 4px 6px; margin-left: -6px; }
+.group-name:focus { outline: none; background: var(--grouped-row); color: var(--label); }
+.mini-btn { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: var(--label-2); flex: none; }
+.mini-btn:hover:not(:disabled) { background: var(--fill); color: var(--label); }
+.mini-btn .i { width: 18px; height: 18px; }
+.mini-btn.danger:hover, .mini-btn.danger.armed { color: var(--red); }
+.mini-btn.danger.armed { background: color-mix(in srgb, var(--red) 15%, transparent); }
+.editor-row { padding: 4px 8px 4px 0; gap: 2px; }
+.editor-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 16px; text-align: left; border-radius: 8px; }
+.editor-open:hover { background: var(--fill); }
+.editor-open > .i { width: 16px; height: 16px; color: var(--label-3); margin-left: auto; }
+.editor-icon { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--fill); flex: none; }
+.editor-icon .i { width: 18px; height: 18px; }
+.editor-text { display: flex; flex-direction: column; min-width: 0; }
+.editor-text b { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.editor-text small { font-size: 12.5px; color: var(--label-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.editor-add-group { margin-top: 22px; }
+.editor-error { margin: 14px 16px 0; }
+.fkey-row { text-align: left; }
+.fkey-row kbd { margin-left: 0; min-width: 64px; }
+.fkey-row .muted { color: var(--label-3); }
+.fkey-row .warn { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--red); }
+.icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; padding: 10px 12px; }
+.icon-choice { display: grid; place-items: center; height: 40px; border-radius: 10px; color: var(--label-2); }
+.icon-choice:hover { background: var(--fill); }
+.icon-choice[aria-pressed="true"] { background: var(--on-fill); color: var(--on-label); box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+.icon-choice .i { width: 20px; height: 20px; }
+.row .link-btn { flex: none; font-size: 15px; }
+.row .link-btn.danger { color: var(--red); }
+.row > kbd { margin-left: auto; font: 600 13px var(--font); padding: 4px 9px; border-radius: 7px; background: var(--fill); }
+.sheet-body > .group + .group-foot + .group { margin-top: 22px; }

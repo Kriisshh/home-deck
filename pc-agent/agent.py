@@ -88,6 +88,20 @@ class Config:
     def data(self) -> dict:
         return self.reload()
 
+    def save_actions(self, actions: list[dict]) -> None:
+        """Replace the actions list in config.json (atomically), keeping every other setting."""
+        with self._lock:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+            data["actions"] = actions
+            head = json.dumps({k: v for k, v in data.items() if k != "actions"}, indent=2, ensure_ascii=False)
+            rows = ",\n".join("    " + json.dumps(a, ensure_ascii=False) for a in actions)
+            text = head[:-2] + ',\n  "actions": [\n' + rows + ("\n" if rows else "") + "  ]\n}\n"
+            json.loads(text)  # never write something we can't read back
+            tmp = self.path.with_suffix(".json.tmp")
+            tmp.write_text(text, encoding="utf-8")
+            os.replace(tmp, self.path)
+            self._data, self._mtime = data, self.path.stat().st_mtime
+
 
 # Easy to type on another device: no l/I/1 or O/0 lookalikes, grouped like "7KQ4-M9XR".
 TOKEN_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
@@ -443,15 +457,113 @@ DETACHED_PROCESS = 0x00000008
 
 
 class Actions:
-    PUBLIC_FIELDS = ("id", "label", "icon", "color", "key", "confirm", "group")
+    PUBLIC_FIELDS = ("id", "label", "icon", "key", "confirm", "group")
+    # Everything the panel may create or change. Types that run programs or commands stay "locked":
+    # the panel can rename, regroup, reorder or delete them, but only config.json can create or edit
+    # what they run - so a leaked token can't be used to execute arbitrary code on the PC.
+    EDITABLE = {
+        "hotkey": ("keys",), "text": ("text",), "media": ("command",), "volume": ("target", "level", "delta", "muted"),
+        "mic_mute": (), "screenshot": (), "show_desktop": (), "task_manager": (), "open": ("target",),
+        "lock": (), "sleep": (), "shutdown": ("delay",), "restart": ("delay",),
+    }
+    MEDIA_COMMANDS = {"play_pause", "play", "pause", "next", "previous", "shuffle", "repeat"}
+    BLOCKED_SCHEMES = {"file", "javascript", "vbscript", "data"}
 
     def __init__(self, config: Config, media: Media, volume: Volume):
         self.config = config
         self.media = media
         self.volume = volume
 
+    def _is_link(self, target: str) -> bool:
+        """URLs and app links (https://, steam://, ms-settings:) - not files or programs."""
+        scheme = target.split(":", 1)[0].lower() if ":" in target else ""
+        return (len(scheme) > 1 and scheme.isascii() and scheme[0].isalpha()
+                and all(c.isalnum() or c in "+-." for c in scheme) and scheme not in self.BLOCKED_SCHEMES)
+
+    def _locked(self, a: dict) -> bool:
+        return a.get("type") not in self.EDITABLE or (a.get("type") == "open" and not self._is_link(a.get("target", "")))
+
     def list(self) -> list[dict]:
-        return [{k: a[k] for k in self.PUBLIC_FIELDS if k in a} for a in self.config.data.get("actions", [])]
+        out = []
+        for a in self.config.data.get("actions", []):
+            item = {k: a[k] for k in self.PUBLIC_FIELDS if k in a}
+            item["type"] = a.get("type")
+            if self._locked(a):
+                item["locked"] = True
+            else:
+                item.update({k: a[k] for k in self.EDITABLE[a["type"]] if k in a})
+            out.append(item)
+        return out
+
+    def save(self, incoming) -> list[dict]:
+        """Validate the panel's edited list and write it to config.json."""
+        if not isinstance(incoming, list) or len(incoming) > 200:
+            raise ValueError("actions must be a list (max 200)")
+        current = {a.get("id"): a for a in self.config.data.get("actions", [])}
+        result, seen = [], set()
+        for raw in incoming:
+            if not isinstance(raw, dict):
+                raise ValueError("each action must be an object")
+            action_id = str(raw.get("id") or "").strip()[:40] or secrets.token_hex(4)
+            if action_id in seen:
+                raise ValueError(f"duplicate id {action_id!r}")
+            seen.add(action_id)
+            label = str(raw.get("label") or "").strip()[:40]
+            if not label:
+                raise ValueError("every button needs a name")
+            meta = {"id": action_id, "label": label}
+            for field, limit in (("icon", 24), ("group", 30), ("key", 40)):
+                value = str(raw.get(field) or "").strip()[:limit]
+                if value:
+                    meta[field] = value.lower() if field == "key" else value
+            if raw.get("confirm"):
+                meta["confirm"] = True
+
+            old = current.get(action_id)
+            if raw.get("locked"):
+                # Keep what a locked action runs exactly as it is in config.json.
+                if not old or not self._locked(old):
+                    raise ValueError(f"{label}: buttons that run programs or commands can only be added in config.json on the PC")
+                kept = {k: v for k, v in old.items() if k not in self.PUBLIC_FIELDS and k != "color"}
+                result.append({**meta, **kept})
+                continue
+
+            kind = raw.get("type")
+            if kind not in self.EDITABLE:
+                raise ValueError(f"{label}: this kind of button can only be added in config.json on the PC")
+            action = {**meta, "type": kind}
+            match kind:
+                case "hotkey":
+                    keys = [str(k).lower() for k in raw.get("keys") or []]
+                    if not keys or any(k not in VK for k in keys):
+                        raise ValueError(f"{label}: unknown key in {keys}")
+                    action["keys"] = keys
+                case "text":
+                    action["text"] = str(raw.get("text") or "")[:500]
+                case "media":
+                    if raw.get("command") not in self.MEDIA_COMMANDS:
+                        raise ValueError(f"{label}: unknown media command")
+                    action["command"] = raw["command"]
+                case "volume":
+                    action["target"] = "app" if raw.get("target") == "app" else "system"
+                    for field in ("level", "delta"):
+                        if raw.get(field) is not None:
+                            action[field] = max(-1.0, min(1.0, float(raw[field])))
+                    if raw.get("muted") in (True, False, "toggle"):
+                        action["muted"] = raw["muted"]
+                case "open":
+                    target = str(raw.get("target") or "").strip()[:500]
+                    if not self._is_link(target):
+                        raise ValueError(f"{label}: enter a link such as https://... or steam://... "
+                                         "(programs and files can only be added in config.json)")
+                    action["target"] = target
+                case "shutdown" | "restart":
+                    if raw.get("delay") is not None:
+                        action["delay"] = max(0, min(3600, int(raw["delay"])))
+            result.append(action)
+        self.config.save_actions(result)
+        log.info("Shortcut buttons updated from the panel (%d buttons)", len(result))
+        return self.list()
 
     def find(self, action_id: str) -> dict | None:
         return next((a for a in self.config.data.get("actions", []) if a.get("id") == action_id), None)
@@ -634,6 +746,8 @@ class Handler(BaseHTTPRequestHandler):
                                           body.get("delta"), body.get("muted")))
             case "GET", ["actions"]:
                 self._json({"actions": app.actions.list()})
+            case "POST", ["actions"]:
+                self._json({"ok": True, "actions": app.actions.save(self._body().get("actions"))})
             case "POST", ["actions", action_id]:
                 action = app.actions.find(unquote(action_id))
                 if not action:

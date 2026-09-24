@@ -2,6 +2,7 @@ import { AirConditioner } from './lib/ac.js';
 import { PcAgent, sendWake } from './lib/agent.js';
 import { load, loadSettings, onChange, save, saveSettings } from './lib/store.js';
 import * as updater from './lib/updater.js';
+import { DeckEditor, iconFor } from './lib/deck-editor.js';
 import { NotSignedIn, XiaomiCloud, acModelFromSpec } from './lib/xiaomi.js';
 
 const $ = (id) => document.getElementById(id);
@@ -14,6 +15,17 @@ let agent = new PcAgent();
 let ac = null;
 
 // ======================================================================= helpers
+
+// Idle mode: after a minute without touching the panel, check the PC and AC less often.
+let lastInteraction = Date.now();
+const isIdle = () => Date.now() - lastInteraction > 60000;
+for (const type of ['pointerdown', 'keydown']) {
+  document.addEventListener(type, () => {
+    const wasIdle = isIdle();
+    lastInteraction = Date.now();
+    if (wasIdle && typeof pollPc === 'function') { pollPc(); pollAc(); } // refresh right away on wake
+  }, { capture: true, passive: true });
+}
 
 let toastTimer = 0;
 function toast(message, isError = false) {
@@ -178,7 +190,7 @@ async function pollAc() {
     setPill('pill-mi', 'error');
   }
   renderAc();
-  scheduleAcPoll(AC.error ? 20000 : 10000);
+  scheduleAcPoll(AC.error ? 20000 : isIdle() ? 30000 : 10000);
 }
 
 function setFanLabel(text) {
@@ -476,7 +488,7 @@ async function pollPc() {
   }
   renderPc();
   renderPlayer();
-  PC.pollTimer = setTimeout(pollPc, PC.online ? 2000 : PC.wakingUntil > Date.now() ? 2000 : 6000);
+  PC.pollTimer = setTimeout(pollPc, PC.online ? (isIdle() ? 5000 : 2000) : PC.wakingUntil > Date.now() ? 2000 : 6000);
 }
 
 function setPcOffline(reason, pill = 'off') {
@@ -680,8 +692,6 @@ function wireSeek() {
 
 // ---------------------------------------------------------------- shortcuts (deck)
 
-const PALETTE = ['--blue', '--indigo', '--purple', '--pink', '--orange', '--teal', '--green', '--red', '--cyan'];
-
 async function refreshActions() {
   PC.actionsAt = Date.now();
   try {
@@ -704,13 +714,11 @@ function renderDeck() {
     if (group && groups.size > 1) nodes.push(el('div', { class: 'deck-group' }, group));
     for (const [a, i] of items) {
       const key = deckKey(a);
-      const color = a.color || `var(${PALETTE[i % PALETTE.length]})`;
       const btn = el('button', {
-        type: 'button', class: 'shortcut', style: `--c:${color}`, disabled: !PC.online,
+        type: 'button', class: 'shortcut', disabled: !PC.online,
         title: key ? `${a.label} (${prettyCombo(key)})` : a.label, dataset: { id: a.id },
         onclick: () => runAction(a, btn),
-      }, el('span', { class: 'emo' }, a.icon || '⚡️'), el('span', { class: 'lbl' }, a.label),
-      key ? el('kbd', {}, prettyCombo(key)) : null, el('span', { class: 'done' }, icon('check')));
+      }, icon(iconFor(a)), el('span', { class: 'lbl' }, a.label), key ? el('kbd', {}, prettyCombo(key)) : null);
       nodes.push(btn);
     }
   }
@@ -731,7 +739,7 @@ async function runAction(action, btn = document.querySelector(`.shortcut[data-id
   try {
     const res = await agent.runAction(action.id);
     if (res.result?.muted !== undefined) toast(`${action.label}: ${res.result.muted ? 'Muted' : 'Unmuted'}`);
-    flash(btn, 'ok', 800);
+    flash(btn, 'ok', 500);
   } catch (err) {
     flash(btn, 'err', 400);
     toast(`${action.label}: ${err.message}`, true);
@@ -1071,6 +1079,9 @@ function wireSettings() {
     await fillDevices([]);
   });
   $('ac-reload').addEventListener('click', reloadDevices);
+  $('add-to-shelf').addEventListener('click', () => {
+    if (isExtension) chrome.tabs.create({ url: `https://kriisshh.github.io/home-deck/#id=${chrome.runtime.id}` });
+  });
   $('open-shortcuts').addEventListener('click', () => {
     if (isExtension) chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
   });
@@ -1199,6 +1210,20 @@ function wireControls() {
   wireSeek();
   wireSettings();
   wireUpdates();
+  const editor = new DeckEditor({
+    dialog: $('deck-editor'), el, icon, toast, eventCombo,
+    getActions: () => PC.actions,
+    save: async (actions) => {
+      const res = await agent.saveActions(actions);
+      PC.actions = res.actions;
+      save('pc.actions', PC.actions);
+      renderDeck();
+    },
+  });
+  $('deck-edit').addEventListener('click', () => {
+    if (!PC.online) return toast('Connect to the PC to edit shortcuts', true);
+    editor.open();
+  });
 }
 
 async function main() {
