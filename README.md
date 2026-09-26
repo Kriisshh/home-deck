@@ -137,7 +137,20 @@ GitHub Pages). Install it (**Install** button, or Chrome menu → *Cast, save an
 as app…*), then in the Launcher right-click **Home Deck** → **Pin to shelf**. Tapping it opens the
 Home Deck window and the launcher closes itself; the extension accepts only that one request from it.
 
-## Wake-on-LAN (later)
+## Wake-on-LAN via the Surface's Linux container
+
+Chrome can't send Wake-on-LAN packets, but the Chrome OS Linux container can. In the Terminal
+(penguin), run once:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Kriisshh/home-deck/main/linux/install.sh | sh
+```
+
+That installs a tiny wake service (`linux/wol-server.py`) that starts whenever Linux runs. Then in
+Home Deck → Settings → Wake PC tap **Use Chrome OS Linux (penguin)** → **Done**. The Wake button works
+while Linux is running.
+
+## Wake-on-LAN with extra hardware (alternative)
 
 Chrome can't send Wake-on-LAN packets, and the Huawei AX2 Pro has no usable WoL, so you'll need a
 small always-on sender. Easiest is an **ESP32/ESP8266 with ESPHome** (flash it from Chrome at

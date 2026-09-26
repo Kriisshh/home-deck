@@ -1079,6 +1079,13 @@ function wireSettings() {
     await fillDevices([]);
   });
   $('ac-reload').addEventListener('click', reloadDevices);
+  $('wake-linux').addEventListener('click', () => {
+    const f = $('settings-form').elements;
+    f.wakeUrl.value = 'http://penguin.linux.test:9009/wake';
+    f.wakeMethod.value = 'POST';
+    f.wakeBody.value = JSON.stringify({ mac: '04:7C:16:48:3D:E8' });
+    toast('Filled in - tap Done to save');
+  });
   $('add-to-shelf').addEventListener('click', () => {
     if (isExtension) chrome.tabs.create({ url: `https://kriisshh.github.io/home-deck/#id=${chrome.runtime.id}` });
   });
