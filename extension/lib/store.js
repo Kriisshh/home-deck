@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS = {
   wakeUrl: '',
   wakeMethod: 'POST',
   wakeBody: '',
+  wakeDevices: '',  // extra devices, one per line: "Name = AA:BB:CC:DD:EE:FF"
   openOnStartup: true,
   windowMode: 'popup',
   appearance: 'auto',

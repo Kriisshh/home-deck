@@ -362,6 +362,12 @@ code { font: 12px var(--mono); }
 .pc[data-state="online"] .dot { background: var(--green); }
 .pc[data-state="waking"] .dot { background: var(--orange); }
 .wake { background: var(--orange); }
+.pc { flex-wrap: wrap; }
+.other-devices { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 8px; padding-top: 12px; border-top: 0.5px solid var(--separator); }
+.device-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px 0 11px; border-radius: 999px; background: var(--fill); font-size: 13px; font-weight: 600; }
+.device-btn .i { width: 15px; height: 15px; color: var(--orange); }
+.device-btn:active { transform: scale(0.95); }
+.row textarea { flex: 1; min-width: 0; font: 14px var(--mono); color: var(--label-2); text-align: right; background: transparent; border: 0; outline: none; resize: none; padding: 6px 0; }
 .pc[data-state="online"] .wake, .pc[data-state="blocked"] .wake { display: none; }
 
 /* ---------------------------------------------------------------- shortcuts (deck) */

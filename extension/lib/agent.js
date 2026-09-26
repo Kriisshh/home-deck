@@ -41,14 +41,26 @@ export class PcAgent {
   runAction(id) { return this.request(`/api/actions/${encodeURIComponent(id)}`, { method: 'POST', timeout: 15000 }); }
 }
 
+const safeJson = (text) => { try { return JSON.parse(text) || {}; } catch { return {}; } };
+
+/** "MSI Laptop = 00:D8:61:83:BD:59" lines → [{ name, mac }] */
+export function parseWakeDevices(text) {
+  return String(text || '').split('\n').map((line) => {
+    const m = line.match(/^\s*(.+?)\s*[=:,]\s*((?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2})\s*$/i);
+    return m && { name: m[1], mac: m[2].toUpperCase().replace(/-/g, ':') };
+  }).filter(Boolean);
+}
+
 /** Fire the user's configured wake request (ESPHome button, phone script, HA webhook, ...). */
-export async function sendWake(settings) {
+export async function sendWake(settings, mac) {
   if (!settings.wakeUrl) throw new Error('Set a Wake URL in Settings');
   const method = settings.wakeMethod || 'POST';
+  // Another device: same wake service, different MAC in the body.
+  const body = mac ? JSON.stringify({ ...safeJson(settings.wakeBody), mac }) : settings.wakeBody;
   const res = await fetch(settings.wakeUrl, {
     method,
-    body: method === 'GET' ? undefined : (settings.wakeBody || undefined),
-    headers: settings.wakeBody ? { 'Content-Type': 'application/json' } : undefined,
+    body: method === 'GET' ? undefined : (body || undefined),
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
     signal: AbortSignal.timeout(6000),
   });
   if (!res.ok) throw new Error(`Wake request failed (HTTP ${res.status})`);

@@ -215,6 +215,7 @@
         </div>
         <button class="btn-filled allow" id="pc-allow" hidden>Allow Access</button>
         <button class="btn-filled wake" id="pc-wake" title="Wake PC"><svg class="i"><use href="#i-bolt"/></svg>Wake</button>
+        <div class="other-devices" id="other-devices" hidden></div>
       </section>
 
       <section class="card deck" id="deck" data-empty="true" aria-label="Shortcuts">
@@ -286,6 +287,7 @@
             </div>
           </div>
           <label class="row"><span class="row-label">Body</span><input name="wakeBody" placeholder="Optional JSON" autocomplete="off" spellcheck="false"></label>
+          <label class="row"><span class="row-label">Other Devices</span><textarea name="wakeDevices" rows="2" placeholder="MSI Laptop = 00:D8:61:83:BD:59" spellcheck="false"></textarea></label>
           <button type="button" class="row row-action" id="wake-linux">Use Chrome OS Linux (penguin)</button>
         </div>
         <p class="group-foot">Chrome can't send Wake-on-LAN packets itself. Point this at an always-on device that can, for example an ESPHome board: <code>POST http://wake-pc.local/button/wake_pc/press</code></p>

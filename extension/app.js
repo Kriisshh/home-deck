@@ -1,5 +1,5 @@
 import { AirConditioner } from './lib/ac.js';
-import { PcAgent, sendWake } from './lib/agent.js';
+import { PcAgent, parseWakeDevices, sendWake } from './lib/agent.js';
 import { load, loadSettings, onChange, save, saveSettings } from './lib/store.js';
 import * as updater from './lib/updater.js';
 import { DeckEditor, iconFor } from './lib/deck-editor.js';
@@ -774,6 +774,24 @@ async function wakePc() {
   }
 }
 
+/** Extra wake-only devices (e.g. the MSI laptop) shown under the PC card. */
+function renderWakeDevices() {
+  const devices = parseWakeDevices(settings.wakeDevices);
+  const box = $('other-devices');
+  box.hidden = !devices.length || !settings.wakeUrl;
+  box.replaceChildren(...devices.map((d) => el('button', {
+    type: 'button', class: 'device-btn', title: `Wake ${d.name} (${d.mac})`,
+    onclick: async () => {
+      try {
+        await sendWake(settings, d.mac);
+        toast(`Wake signal sent to ${d.name}`);
+      } catch (err) {
+        toast(err.message, true);
+      }
+    },
+  }, icon('bolt'), `Wake ${d.name}`)));
+}
+
 // ======================================================================= self-update
 
 const UPDATE = { latest: null, sha: null, checkedAt: 0, busy: false };
@@ -1084,6 +1102,7 @@ function wireSettings() {
     f.wakeUrl.value = 'http://penguin.linux.test:9009/wake';
     f.wakeMethod.value = 'POST';
     f.wakeBody.value = JSON.stringify({ mac: '04:7C:16:48:3D:E8' });
+    if (!f.wakeDevices.value.trim()) f.wakeDevices.value = 'MSI Laptop = 00:D8:61:83:BD:59';
     toast('Filled in - tap Done to save');
   });
   $('add-to-shelf').addEventListener('click', () => {
@@ -1115,6 +1134,7 @@ async function applySettings(next) {
     renderAc();
   }
   if (!prev || prev.agentUrl !== next.agentUrl || prev.agentToken !== next.agentToken) initPc();
+  renderWakeDevices();
   renderDeck();
 }
 
