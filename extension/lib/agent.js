@@ -57,13 +57,18 @@ export async function sendWake(settings, mac) {
   const method = settings.wakeMethod || 'POST';
   // Another device: same wake service, different MAC in the body.
   const body = mac ? JSON.stringify({ ...safeJson(settings.wakeBody), mac }) : settings.wakeBody;
+  const attempt = (url) => fetch(url, {
+    method,
+    body: method === 'GET' ? undefined : (body || undefined),
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    signal: AbortSignal.timeout(6000),
+  });
   let res;
   try {
-    res = await fetch(settings.wakeUrl, {
-      method,
-      body: method === 'GET' ? undefined : (body || undefined),
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      signal: AbortSignal.timeout(6000),
+    res = await attempt(settings.wakeUrl).catch((err) => {
+      // Chrome OS also forwards Linux container ports to localhost; use that if the hostname fails.
+      if (!settings.wakeUrl.includes('penguin.linux.test')) throw err;
+      return attempt(settings.wakeUrl.replace('penguin.linux.test', 'localhost'));
     });
   } catch {
     const host = (() => { try { return new URL(settings.wakeUrl).host; } catch { return settings.wakeUrl; } })();
