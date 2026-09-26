@@ -57,11 +57,19 @@ export async function sendWake(settings, mac) {
   const method = settings.wakeMethod || 'POST';
   // Another device: same wake service, different MAC in the body.
   const body = mac ? JSON.stringify({ ...safeJson(settings.wakeBody), mac }) : settings.wakeBody;
-  const res = await fetch(settings.wakeUrl, {
-    method,
-    body: method === 'GET' ? undefined : (body || undefined),
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
-    signal: AbortSignal.timeout(6000),
-  });
+  let res;
+  try {
+    res = await fetch(settings.wakeUrl, {
+      method,
+      body: method === 'GET' ? undefined : (body || undefined),
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      signal: AbortSignal.timeout(6000),
+    });
+  } catch {
+    const host = (() => { try { return new URL(settings.wakeUrl).host; } catch { return settings.wakeUrl; } })();
+    throw new Error(host.startsWith('penguin.linux.test')
+      ? "Can't reach the wake service. Open the Linux Terminal on the Surface (and run the install command once)."
+      : `Can't reach the wake device at ${host}`);
+  }
   if (!res.ok) throw new Error(`Wake request failed (HTTP ${res.status})`);
 }
