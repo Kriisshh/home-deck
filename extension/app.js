@@ -778,13 +778,16 @@ async function wakePc() {
 function renderWakeDevices() {
   const devices = parseWakeDevices(settings.wakeDevices);
   const box = $('other-devices');
-  box.hidden = !devices.length || !settings.wakeUrl;
+  box.hidden = !devices.length;
   box.replaceChildren(...devices.map((d) => el('button', {
     type: 'button', class: 'device-btn', title: `Wake ${d.name} (${d.mac})`,
     onclick: async () => {
       try {
-        await sendWake(settings, d.mac, d.ip);
-        toast(`Wake signal sent to ${d.name}`);
+        // The PC broadcasts on the home network like a phone WoL app; the Surface's Linux container
+        // can't (Chrome OS doesn't pass its broadcasts through), so it's only the fallback.
+        if (PC.online) await agent.wake(d.mac);
+        else await sendWake(settings, d.mac, d.ip);
+        toast(`Wake signal sent to ${d.name}${PC.online ? ` via ${PC.name || 'the PC'}` : ''}`);
       } catch (err) {
         toast(err.message, true);
       }

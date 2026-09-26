@@ -38,6 +38,7 @@ export class PcAgent {
   setVolume(body) { return this.request('/api/volume', { method: 'POST', body }); }
   actions() { return this.request('/api/actions'); }
   saveActions(actions) { return this.request('/api/actions', { method: 'POST', body: { actions }, timeout: 8000 }); }
+  wake(mac) { return this.request('/api/wake', { method: 'POST', body: { mac } }); }
   runAction(id) { return this.request(`/api/actions/${encodeURIComponent(id)}`, { method: 'POST', timeout: 15000 }); }
 }
 

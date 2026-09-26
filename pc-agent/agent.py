@@ -117,6 +117,30 @@ def normalise_token(token: str) -> str:
     return "".join(ch for ch in token.upper() if ch not in " -")
 
 
+# --------------------------------------------------------------------------- Wake-on-LAN
+
+def wake_on_lan(mac: str) -> list[str]:
+    """Broadcast a magic packet on the home network (what phone WoL apps do)."""
+    digits = "".join(c for c in mac if c.isalnum())
+    if len(digits) != 12:
+        raise ValueError(f"not a MAC address: {mac!r}")
+    packet = bytes([0xFF] * 6) + bytes.fromhex(digits) * 16
+    targets = {"255.255.255.255"}
+    for ip in _lan_ips():  # subnet broadcast for each home-network address, assuming a /24
+        targets.add(ip.rsplit(".", 1)[0] + ".255")
+    sent = []
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        for target in sorted(targets):
+            for port in (9, 7):
+                try:
+                    sock.sendto(packet, (target, port))
+                    sent.append(f"{target}:{port}")
+                except OSError:
+                    pass
+    return sent
+
+
 # --------------------------------------------------------------------------- keyboard input
 
 user32 = ctypes.WinDLL("user32", use_last_error=True)
@@ -744,6 +768,10 @@ class Handler(BaseHTTPRequestHandler):
                 body = self._body()
                 self._json(app.volume.set(body.get("target", "system"), body.get("level"),
                                           body.get("delta"), body.get("muted")))
+            case "POST", ["wake"]:
+                sent = wake_on_lan(str(self._body().get("mac", "")))
+                log.info("Sent Wake-on-LAN packet to %s", ", ".join(sent))
+                self._json({"ok": bool(sent), "sent": sent})
             case "GET", ["actions"]:
                 self._json({"actions": app.actions.list()})
             case "POST", ["actions"]:
