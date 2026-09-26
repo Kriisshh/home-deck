@@ -783,7 +783,7 @@ function renderWakeDevices() {
     type: 'button', class: 'device-btn', title: `Wake ${d.name} (${d.mac})`,
     onclick: async () => {
       try {
-        await sendWake(settings, d.mac);
+        await sendWake(settings, d.mac, d.ip);
         toast(`Wake signal sent to ${d.name}`);
       } catch (err) {
         toast(err.message, true);
@@ -1101,8 +1101,8 @@ function wireSettings() {
     const f = $('settings-form').elements;
     f.wakeUrl.value = 'http://penguin.linux.test:9009/wake';
     f.wakeMethod.value = 'POST';
-    f.wakeBody.value = JSON.stringify({ mac: '04:7C:16:48:3D:E8' });
-    if (!f.wakeDevices.value.trim()) f.wakeDevices.value = 'MSI Laptop = 00:D8:61:83:BD:59';
+    f.wakeBody.value = JSON.stringify({ mac: '04:7C:16:48:3D:E8', ip: '192.168.1.94' });
+    f.wakeDevices.value = 'MSI Laptop = 00:D8:61:83:BD:59 @ 192.168.1.67';
     toast('Filled in - tap Done to save');
   });
   $('add-to-shelf').addEventListener('click', () => {

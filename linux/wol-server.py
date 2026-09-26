@@ -24,11 +24,17 @@ def magic_packet(mac: str) -> bytes:
     return b"\xff" * 6 + bytes.fromhex(digits) * 16
 
 
-def send(mac: str) -> None:
+def send(mac: str, ip: str = "") -> None:
     packet = magic_packet(mac)
+    # Broadcasts often stay inside the Linux container's private network, so when the device's IP is
+    # known, also send straight to it (that crosses Chrome OS's NAT onto the home network).
+    targets = list(TARGETS)
+    if ip:
+        socket.inet_aton(ip)  # raises OSError/ValueError for a bad IP
+        targets = [(ip, 9), (ip, 7)] + targets
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        for addr in TARGETS:
+        for addr in targets:
             try:
                 sock.sendto(packet, addr)
             except OSError:
@@ -67,9 +73,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._reply(404, {"ok": False, "error": "not found"})
         try:
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
-            send(str(body.get("mac", "")))
+            send(str(body.get("mac", "")), str(body.get("ip", "") or ""))
             self._reply(200, {"ok": True})
-        except (ValueError, json.JSONDecodeError) as exc:
+        except (ValueError, OSError, json.JSONDecodeError) as exc:
             self._reply(400, {"ok": False, "error": str(exc)})
 
     def log_message(self, fmt, *args):

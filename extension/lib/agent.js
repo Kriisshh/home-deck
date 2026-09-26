@@ -43,20 +43,20 @@ export class PcAgent {
 
 const safeJson = (text) => { try { return JSON.parse(text) || {}; } catch { return {}; } };
 
-/** "MSI Laptop = 00:D8:61:83:BD:59" lines → [{ name, mac }] */
+/** "MSI Laptop = 00:D8:61:83:BD:59 @ 192.168.1.67" lines (IP optional) → [{ name, mac, ip }] */
 export function parseWakeDevices(text) {
   return String(text || '').split('\n').map((line) => {
-    const m = line.match(/^\s*(.+?)\s*[=:,]\s*((?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2})\s*$/i);
-    return m && { name: m[1], mac: m[2].toUpperCase().replace(/-/g, ':') };
+    const m = line.match(/^\s*(.+?)\s*[=:,]\s*((?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2})\s*(?:@\s*(\d{1,3}(?:\.\d{1,3}){3}))?\s*$/i);
+    return m && { name: m[1], mac: m[2].toUpperCase().replace(/-/g, ':'), ip: m[3] || '' };
   }).filter(Boolean);
 }
 
 /** Fire the user's configured wake request (ESPHome button, phone script, HA webhook, ...). */
-export async function sendWake(settings, mac) {
+export async function sendWake(settings, mac, ip) {
   if (!settings.wakeUrl) throw new Error('Set a Wake URL in Settings');
   const method = settings.wakeMethod || 'POST';
   // Another device: same wake service, different MAC in the body.
-  const body = mac ? JSON.stringify({ ...safeJson(settings.wakeBody), mac }) : settings.wakeBody;
+  const body = mac ? JSON.stringify({ ...safeJson(settings.wakeBody), mac, ip: ip || undefined }) : settings.wakeBody;
   const attempt = (url) => fetch(url, {
     method,
     body: method === 'GET' ? undefined : (body || undefined),
