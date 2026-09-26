@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS = {
   windowMode: 'popup',
   appearance: 'auto',
   reduceTransparency: false,
+  keepScreenOn: true,
 };
 
 export async function load(key, fallback = null) {

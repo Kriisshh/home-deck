@@ -558,3 +558,17 @@ dialog.sheet form { display: flex; flex-direction: column; min-height: 0; max-he
 .row .link-btn.danger { color: var(--red); }
 .row > kbd { margin-left: auto; font: 600 13px var(--font); padding: 4px 9px; border-radius: 7px; background: var(--fill); }
 .sheet-body > .group + .group-foot + .group { margin-top: 22px; }
+
+/* ---------------------------------------------------------------- panel brightness */
+.topbar { position: relative; }
+.dimmer {
+  position: absolute; left: 50%; top: 22px; transform: translateX(-50%); z-index: 60;
+  display: flex; align-items: center; gap: 10px; width: 240px; padding: 0 14px; height: 36px;
+  border-radius: 999px; background: var(--material); box-shadow: inset 0 0 0 0.5px var(--material-edge);
+}
+.dimmer .slider { flex: 1; }
+.dim-lo { width: 13px; height: 13px; color: var(--label-2); }
+.dim-hi { width: 18px; height: 18px; color: var(--label-2); }
+.dimmer.dark { opacity: 0.35; }  /* still findable when the panel is dimmed to near black */
+.dim-overlay { position: fixed; inset: 0; z-index: 50; background: #000; opacity: 0; pointer-events: none; }
+@media (max-width: 720px) { .dimmer { position: static; transform: none; width: 160px; margin: 0 auto; } }

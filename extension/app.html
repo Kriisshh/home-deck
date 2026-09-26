@@ -97,6 +97,11 @@
       <div class="date" id="date"></div>
       <div class="time" id="time">--:--</div>
     </div>
+    <div class="dimmer" id="dimmer" title="Panel brightness">
+      <svg class="i dim-lo"><use href="#i-heat"/></svg>
+      <div class="slider thin" id="dim-slider" role="slider" tabindex="0" aria-label="Panel brightness"><div class="slider-fill"></div></div>
+      <svg class="i dim-hi"><use href="#i-heat"/></svg>
+    </div>
     <div class="status">
       <button class="update-pill" id="btn-update" hidden><svg class="i"><use href="#i-download"/></svg><span id="update-text">Update</span></button>
       <span class="pill" id="pill-mi" data-state="off"><i></i><span>Mi Home</span></span>
@@ -317,6 +322,7 @@
         <div class="group-title">App</div>
         <div class="group">
           <label class="row"><span class="row-label">Open When Chrome Starts</span><input type="checkbox" class="switch" name="openOnStartup"></label>
+          <label class="row"><span class="row-label">Keep Screen On</span><input type="checkbox" class="switch" name="keepScreenOn"></label>
           <label class="row"><span class="row-label">Window</span>
             <select name="windowMode">
               <option value="popup">App Window</option>
@@ -347,6 +353,7 @@
     <div class="sheet-body" id="keys-body"></div>
   </dialog>
 
+  <div class="dim-overlay" id="dim-overlay" aria-hidden="true"></div>
   <div class="island" id="toast" role="status" aria-live="polite"><svg class="i island-icon"><use href="#i-check"/></svg><span id="toast-text"></span></div>
 </body>
 </html>
