@@ -29,9 +29,12 @@ const VOLUME = [
   ['system-down', 'PC volume down', { target: 'system', delta: -0.05 }], ['system-mute', 'PC mute', { target: 'system', muted: 'toggle' }],
 ];
 const FKEYS = Array.from({ length: 12 }, (_, i) => `f${13 + i}`);
-const MODIFIERS = ['ctrl', 'shift', 'alt'];
+const MODIFIERS = ['ctrl', 'win', 'shift', 'alt'];
+const ARROWS = [['left', '← Left'], ['right', '→ Right'], ['up', '↑ Up'], ['down', '↓ Down']];
+const PICKABLE = [...FKEYS, ...ARROWS.map(([k]) => k)];
 
-const pretty = (keys) => keys.map((k) => (k.length <= 3 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1))).join('+');
+const KEY_NAMES = { win: 'Win', ctrl: 'Ctrl', shift: 'Shift', alt: 'Alt', left: '←', right: '→', up: '↑', down: '↓' };
+const pretty = (keys) => keys.map((k) => KEY_NAMES[k] || (k.length <= 3 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1))).join('+');
 const volumeChoice = (a) => VOLUME.find(([, , v]) => v.target === (a.target || 'system') && v.delta === a.delta && v.muted === a.muted)?.[0] ?? 'system-up';
 
 export function describe(a) {
@@ -276,7 +279,7 @@ export class DeckEditor {
       case 'hotkey': {
         const keys = a.keys || [];
         const main = keys.find((k) => !MODIFIERS.includes(k)) || 'f13';
-        const isF = FKEYS.includes(main);
+        const isF = PICKABLE.includes(main);
         const custom = el('input', {
           value: keys.join('+'), placeholder: 'e.g. ctrl+shift+m', spellcheck: 'false',
           onchange: (e) => { a.keys = e.target.value.toLowerCase().split('+').map((k) => k.trim()).filter(Boolean); this.showForm(a); },
@@ -287,12 +290,17 @@ export class DeckEditor {
               a.keys = e.target.value === 'custom' ? keys.filter((k) => MODIFIERS.includes(k)).concat('m') : [...keys.filter((k) => MODIFIERS.includes(k)), e.target.value];
               this.showForm(a);
             },
-          }, ...FKEYS.map((k) => el('option', { value: k, selected: isF && main === k }, k.toUpperCase())),
+          }, el('optgroup', { label: 'Game-safe (F13–F24)' }, ...FKEYS.map((k) => el('option', { value: k, selected: isF && main === k }, k.toUpperCase()))),
+          el('optgroup', { label: 'Arrow keys' }, ...ARROWS.map(([k, label]) => el('option', { value: k, selected: main === k }, label))),
           el('option', { value: 'custom', selected: !isF }, 'Other key…'))),
           row('With', el('div', { class: 'segmented small multi' }, ...MODIFIERS.map((m) => el('label', {},
             el('input', {
               type: 'checkbox', checked: keys.includes(m),
-              onchange: (e) => { a.keys = e.target.checked ? [m, ...keys.filter((k) => k !== m)] : keys.filter((k) => k !== m); this.showForm(a); },
+              onchange: (e) => {
+                const mods = MODIFIERS.filter((x) => (x === m ? e.target.checked : keys.includes(x)));
+                a.keys = [...mods, ...keys.filter((k) => !MODIFIERS.includes(k))];
+                this.showForm(a);
+              },
             }), el('span', {}, m[0].toUpperCase() + m.slice(1)))))),
         );
         if (!isF) params.append(row('Combo', custom));
