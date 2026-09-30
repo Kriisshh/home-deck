@@ -98,6 +98,10 @@
       <div class="time" id="time">--:--</div>
     </div>
     <div class="status">
+      <div class="dimmer" id="dimmer" title="Panel brightness">
+        <svg class="i dim-lo"><use href="#i-heat"/></svg>
+        <div class="slider thin" id="dim-slider" role="slider" tabindex="0" aria-label="Panel brightness"><div class="slider-fill"></div></div>
+      </div>
       <button class="update-pill" id="btn-update" hidden><svg class="i"><use href="#i-download"/></svg><span id="update-text">Update</span></button>
       <span class="pill" id="pill-mi" data-state="off"><i></i><span>Mi Home</span></span>
       <span class="pill" id="pill-pc" data-state="off"><i></i><span>PC</span></span>
@@ -348,6 +352,7 @@
     <div class="sheet-body" id="keys-body"></div>
   </dialog>
 
+  <div class="dim-overlay" id="dim-overlay" aria-hidden="true"></div>
   <div class="island" id="toast" role="status" aria-live="polite"><svg class="i island-icon"><use href="#i-check"/></svg><span id="toast-text"></span></div>
 </body>
 </html>

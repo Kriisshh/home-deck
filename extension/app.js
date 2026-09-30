@@ -73,6 +73,25 @@ function tickClock() {
   $('date').textContent = now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
+// Panel brightness: a black layer over the panel (extensions can't change the real backlight).
+// 100% = no layer, 1% = nearly black. Touches pass straight through.
+function wireDimmer() {
+  const apply = (v) => {
+    $('dim-overlay').style.opacity = String(((100 - v) / 100) * 0.99);
+    $('dimmer').classList.toggle('dark', v <= 30);
+  };
+  let saveTimer = 0;
+  const slider = makeSlider($('dim-slider'), {
+    min: 1, max: 100, step: 1,
+    onInput: (v) => {
+      apply(v);
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => save('ui.brightness', v), 400);
+    },
+  });
+  load('ui.brightness', 100).then((v) => { slider.set(v); apply(v); });
+}
+
 /** Keep the display awake while Home Deck is open (Settings > App > Keep Screen On). */
 function applyKeepAwake() {
   if (!isExtension || !chrome.power) return;
@@ -1248,6 +1267,7 @@ function wireControls() {
   wireSeek();
   wireSettings();
   wireUpdates();
+  wireDimmer();
   const editor = new DeckEditor({
     dialog: $('deck-editor'), el, icon, toast, eventCombo,
     getActions: () => PC.actions,
