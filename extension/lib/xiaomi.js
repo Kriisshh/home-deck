@@ -245,9 +245,19 @@ export class XiaomiCloud {
       },
     });
     const text = await res.text();
-    if (res.status === 401 || res.status === 403) {
-      if (retry) { await this._refresh(); return this.call(path, data, false); }
-      throw new NotSignedIn('Xiaomi session expired - sign in again in Settings');
+    // Xiaomi answers an expired or mismatched sign-in with 400 as well as 401/403: renew it once
+    // with the long-lived passToken, and if that doesn't help, ask for a fresh QR sign-in.
+    if (res.status === 400 || res.status === 401 || res.status === 403) {
+      if (retry) {
+        this._cookiesFor = null;
+        try {
+          await this._refresh();
+        } catch {
+          throw new NotSignedIn('Xiaomi sign-in expired - Settings > Sign In with QR Code');
+        }
+        return this.call(path, data, false);
+      }
+      throw new NotSignedIn('Xiaomi sign-in expired - Settings > Sign In with QR Code');
     }
     if (!res.ok) throw new Error(`Xiaomi cloud error (HTTP ${res.status})`);
     const json = JSON.parse(text.trimStart().startsWith('{') ? text : decryptResponse(key, text));
