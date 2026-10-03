@@ -14,7 +14,7 @@ import socket
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 PORT = 9009
-TARGETS = [("255.255.255.255", 9), ("192.168.1.255", 9), ("255.255.255.255", 7)]
+TARGETS = [("255.255.255.255", 9), ("255.255.255.255", 7)]  # plus this network's x.y.z.255, see send()
 
 
 def magic_packet(mac: str) -> bytes:
@@ -24,11 +24,25 @@ def magic_packet(mac: str) -> bytes:
     return b"\xff" * 6 + bytes.fromhex(digits) * 16
 
 
+def local_broadcast() -> str | None:
+    """x.y.z.255 for the address this device uses on its network (assumes a /24 home network)."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(("1.1.1.1", 9))  # no packet is sent; this just picks the outgoing address
+            ip = probe.getsockname()[0]
+        return ip.rsplit(".", 1)[0] + ".255"
+    except OSError:
+        return None
+
+
 def send(mac: str, ip: str = "") -> None:
     packet = magic_packet(mac)
     # Broadcasts often stay inside the Linux container's private network, so when the device's IP is
     # known, also send straight to it (that crosses Chrome OS's NAT onto the home network).
     targets = list(TARGETS)
+    subnet = local_broadcast()
+    if subnet:
+        targets = [(subnet, 9), (subnet, 7)] + targets
     if ip:
         socket.inet_aton(ip)  # raises OSError/ValueError for a bad IP
         targets = [(ip, 9), (ip, 7)] + targets
