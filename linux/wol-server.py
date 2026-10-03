@@ -96,5 +96,33 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+def mac_from_packet(data: bytes) -> str | None:
+    """The MAC address in a magic packet (6 x FF, then the MAC 16 times), or None if it isn't one."""
+    start = data.find(b"\xff" * 6)
+    if start < 0 or len(data) < start + 6 + 96:
+        return None
+    mac = data[start + 6:start + 12]
+    if data[start + 6:start + 102] != mac * 16:
+        return None
+    return mac.hex(":")
+
+
+def udp_relay() -> None:
+    """Rebroadcast magic packets that arrive on UDP PORT, so WoL apps (e.g. WolOn) can wake devices
+    from anywhere by sending to this phone over Tailscale (Tailscale doesn't carry broadcasts)."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.bind(("0.0.0.0", PORT))
+        while True:
+            data, _ = sock.recvfrom(2048)
+            mac = mac_from_packet(data)
+            if mac:
+                try:
+                    send(mac)
+                except OSError:
+                    pass
+
+
 if __name__ == "__main__":
+    import threading
+    threading.Thread(target=udp_relay, daemon=True).start()
     HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

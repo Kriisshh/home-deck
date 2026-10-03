@@ -165,7 +165,10 @@ broadcasts reach the network (the Surface's Linux container can't do that).
 3. Android settings: turn off battery optimisation for Termux, and keep Wi-Fi on during sleep.
 4. Home Deck → Settings → Wake PC: Wake URL = that address, Body = `{"mac": "04:7C:16:48:3D:E8"}`,
    Other Devices = `MSI Laptop = 00:D8:61:83:BD:59`.
-5. Remote waking: install **Tailscale** on the old phone and your main phone. From anywhere, POST
+5. Remote waking with a WoL app (e.g. WolOn): with Tailscale on both phones, set the app's
+   host/broadcast address to the old phone's Tailscale address (100.x.x.x) and port **9009**. The
+   wake service rebroadcasts any valid magic packet it receives there onto the home network.
+6. Remote waking without a WoL app: install **Tailscale** on the old phone and your main phone. From anywhere, POST
    `{"mac": "00:D8:61:83:BD:59"}` to `http://<old phone's 100.x Tailscale address>:9009/wake`
    (e.g. with the HTTP Shortcuts app).
 
