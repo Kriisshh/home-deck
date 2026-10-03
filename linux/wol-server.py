@@ -9,11 +9,16 @@ of the time, so it costs nothing while idle. Standard library only.
 """
 
 import json
+import os
 import re
 import socket
+import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 PORT = 9009
+# Optional port forwards, e.g. {"20388": "192.168.3.4"} sends anything arriving on port 20388 (TCP and
+# UDP) to the laptop - so a remote app (Wolow Companion commands) can reach it through this device.
+FORWARDS_FILE = os.path.expanduser("~/.home-deck-forwards.json")
 TARGETS = [("255.255.255.255", 9), ("255.255.255.255", 7)]  # plus this network's x.y.z.255, see send()
 
 
@@ -122,7 +127,74 @@ def udp_relay() -> None:
                     pass
 
 
+def load_forwards() -> dict[int, str]:
+    try:
+        with open(FORWARDS_FILE, encoding="utf-8") as f:
+            return {int(port): str(host) for port, host in json.load(f).items()}
+    except (OSError, ValueError):
+        return {}
+
+
+def _pipe(src: socket.socket, dst: socket.socket) -> None:
+    try:
+        while data := src.recv(65536):
+            dst.sendall(data)
+    except OSError:
+        pass
+    finally:
+        for s in (src, dst):
+            try:
+                s.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+
+
+def tcp_forward(port: int, host: str) -> None:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind(("0.0.0.0", port))
+        server.listen(16)
+        while True:
+            client, _ = server.accept()
+            try:
+                upstream = socket.create_connection((host, port), timeout=5)
+                upstream.settimeout(None)
+            except OSError:
+                client.close()
+                continue
+            threading.Thread(target=_pipe, args=(client, upstream), daemon=True).start()
+            threading.Thread(target=_pipe, args=(upstream, client), daemon=True).start()
+
+
+def udp_forward(port: int, host: str) -> None:
+    """Forward datagrams to host:port and send its replies back to whoever asked."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as server:
+        server.bind(("0.0.0.0", port))
+        upstreams: dict[tuple, socket.socket] = {}
+        while True:
+            data, client = server.recvfrom(65536)
+            up = upstreams.get(client)
+            if up is None:
+                up = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                up.bind(("0.0.0.0", 0))  # bind before listening for replies
+                upstreams[client] = up
+
+                def replies(up=up, client=client):
+                    try:
+                        while True:
+                            server.sendto(up.recvfrom(65536)[0], client)
+                    except OSError:
+                        pass
+                threading.Thread(target=replies, daemon=True).start()
+            try:
+                up.sendto(data, (host, port))
+            except OSError:
+                pass
+
+
 if __name__ == "__main__":
-    import threading
+    for fwd_port, fwd_host in load_forwards().items():
+        threading.Thread(target=tcp_forward, args=(fwd_port, fwd_host), daemon=True).start()
+        threading.Thread(target=udp_forward, args=(fwd_port, fwd_host), daemon=True).start()
     threading.Thread(target=udp_relay, daemon=True).start()
     HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
