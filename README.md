@@ -150,6 +150,25 @@ That installs a tiny wake service (`linux/wol-server.py`) that starts whenever L
 Home Deck → Settings → Wake PC tap **Use Chrome OS Linux (penguin)** → **Done**. The Wake button works
 while Linux is running.
 
+## Wake-on-LAN with an old Android phone (works with everything off, and remotely)
+
+An old Android phone on charge can be the always-on sender. It sits on your home Wi-Fi, so its
+broadcasts reach the network (the Surface's Linux container can't do that).
+
+1. Install **Termux** and **Termux:Boot** from F-Droid (the Play Store Termux is outdated). Open
+   Termux:Boot once so Android lets it run at startup.
+2. In Termux, run once:
+   ```sh
+   curl -fsSL https://raw.githubusercontent.com/Kriisshh/home-deck/main/android/install-termux.sh | sh
+   ```
+   It prints the phone's Wake URL. Give the phone a fixed address in the router (DHCP reservation).
+3. Android settings: turn off battery optimisation for Termux, and keep Wi-Fi on during sleep.
+4. Home Deck → Settings → Wake PC: Wake URL = that address, Body = `{"mac": "04:7C:16:48:3D:E8"}`,
+   Other Devices = `MSI Laptop = 00:D8:61:83:BD:59`.
+5. Remote waking: install **Tailscale** on the old phone and your main phone. From anywhere, POST
+   `{"mac": "00:D8:61:83:BD:59"}` to `http://<old phone's 100.x Tailscale address>:9009/wake`
+   (e.g. with the HTTP Shortcuts app).
+
 ## Wake-on-LAN with extra hardware (alternative)
 
 Chrome can't send Wake-on-LAN packets, and the Huawei AX2 Pro has no usable WoL, so you'll need a
