@@ -21,6 +21,7 @@ chmod +x "$HOME/.termux/boot/home-deck-wol.sh"
 sh "$HOME/.termux/boot/home-deck-wol.sh"
 sleep 1
 curl -fsS http://localhost:9009/ && echo
-IP=$(ip -4 addr show wlan0 2>/dev/null | sed -n 's/.*inet \([0-9.]*\).*/\1/p' | head -n1)
+# Android blocks `ip addr` for apps; ask the network stack which address it would use instead.
+IP=$(python -c "import socket; s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.connect(('1.1.1.1', 9)); print(s.getsockname()[0])" 2>/dev/null)
 echo "Home Deck wake service is running."
 echo "Wake URL for Home Deck (home Wi-Fi): http://${IP:-<this phone's IP>}:9009/wake"
