@@ -169,7 +169,10 @@ broadcasts reach the network (the Surface's Linux container can't do that).
    adb shell settings put global device_idle_constants light_after_inactive_to=2592000000,inactive_to=2592000000,motion_inactive_to=2592000000,sensing_to=2592000000,locating_to=2592000000
    adb shell dumpsys deviceidle whitelist +com.tailscale.ipn
    adb shell dumpsys deviceidle whitelist +com.termux
+   adb shell settings put global wifi_suspend_optimizations_enabled 0
    ```
+   The last line stops Wi-Fi power saving while the screen is off. On the Galaxy S7 that power saving
+   was dropping Tailscale's connections every couple of minutes.
 4. Home Deck → Settings → Wake PC: Wake URL = that address, Body = `{"mac": "04:7C:16:48:3D:E8"}`,
    Other Devices = `MSI Laptop = 00:D8:61:83:BD:59`.
 5. Remote waking with a WoL app (e.g. WolOn): with Tailscale on both phones, set the app's
