@@ -163,6 +163,13 @@ broadcasts reach the network (the Surface's Linux container can't do that).
    ```
    It prints the phone's Wake URL. Give the phone a fixed address in the router (DHCP reservation).
 3. Android settings: turn off battery optimisation for Termux, and keep Wi-Fi on during sleep.
+   If Tailscale goes offline while the screen is off (Android's Doze), switch Doze off once over
+   USB (Developer options → USB debugging, then on a PC with `adb`):
+   ```sh
+   adb shell settings put global device_idle_constants light_after_inactive_to=2592000000,inactive_to=2592000000,motion_inactive_to=2592000000,sensing_to=2592000000,locating_to=2592000000
+   adb shell dumpsys deviceidle whitelist +com.tailscale.ipn
+   adb shell dumpsys deviceidle whitelist +com.termux
+   ```
 4. Home Deck → Settings → Wake PC: Wake URL = that address, Body = `{"mac": "04:7C:16:48:3D:E8"}`,
    Other Devices = `MSI Laptop = 00:D8:61:83:BD:59`.
 5. Remote waking with a WoL app (e.g. WolOn): with Tailscale on both phones, set the app's
