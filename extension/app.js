@@ -818,7 +818,7 @@ function renderWakeDevices() {
         toast(err.message, true);
       }
     },
-  }, icon('bolt'), `Wake ${d.name}`)));
+  }, icon('bolt'), d.name)));
 }
 
 // ======================================================================= self-update
@@ -1131,7 +1131,7 @@ function wireSettings() {
     f.wakeUrl.value = 'http://penguin.linux.test:9009/wake';
     f.wakeMethod.value = 'POST';
     f.wakeBody.value = JSON.stringify({ mac: '04:7C:16:48:3D:E8', ip: '192.168.1.94' });
-    f.wakeDevices.value = 'MSI Laptop = 00:D8:61:83:BD:59 @ 192.168.1.67';
+    f.wakeDevices.value = 'MSI = 00:D8:61:83:BD:59\nFujitsu = 74:2B:62:88:2E:3F';
     toast('Filled in - tap Done to save');
   });
   $('add-to-shelf').addEventListener('click', () => {
