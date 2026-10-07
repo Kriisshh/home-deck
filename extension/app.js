@@ -74,15 +74,18 @@ function tickClock() {
 }
 
 // Panel brightness: a black layer over the panel (extensions can't change the real backlight).
-// 100% = no layer, 1% = nearly black. Touches pass straight through.
+// 100% = no layer, 0% = fully black. At 25% and below the layer also blocks touches, so the dark
+// panel can't be pressed by accident; the slider sits above it and always works.
+const DIM_LOCK_AT = 25;
 function wireDimmer() {
   const apply = (v) => {
-    $('dim-overlay').style.opacity = String(((100 - v) / 100) * 0.99);
-    $('dimmer').classList.toggle('dark', v <= 30);
+    const layer = $('dim-overlay');
+    layer.style.opacity = String((100 - v) / 100);
+    layer.classList.toggle('lock', v <= DIM_LOCK_AT);
   };
   let saveTimer = 0;
   const slider = makeSlider($('dim-slider'), {
-    min: 1, max: 100, step: 1,
+    min: 0, max: 100, step: 1,
     onInput: (v) => {
       apply(v);
       clearTimeout(saveTimer);

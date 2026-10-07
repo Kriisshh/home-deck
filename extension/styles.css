@@ -1,7 +1,7 @@
 /* Home Deck: Apple-style design (system colors, materials, SF-like type via Inter). */
 
-/* Panel brightness (left of the status pills). The slider sits above the dimming layer so it can
-   always be found, even when the panel is nearly black. */
+/* Panel brightness, three layers: the panel, a black layer over it (z 50), and this slider on top
+   (z 60), so the slider stays fully visible and usable even when the panel is completely black. */
 .dimmer {
   position: relative; z-index: 60;
   display: flex; align-items: center; gap: 9px; width: 150px; height: 32px; padding: 0 13px;
@@ -9,8 +9,8 @@
 }
 .dimmer .slider { flex: 1; }
 .dim-lo { width: 15px; height: 15px; color: var(--label-2); }
-.dimmer.dark { opacity: 0.35; }
 .dim-overlay { position: fixed; inset: 0; z-index: 50; background: #000; opacity: 0; pointer-events: none; }
+.dim-overlay.lock { pointer-events: auto; } /* dim enough: swallow touches meant for the panel */
 @media (max-width: 720px) { .dimmer { width: 110px; } }
 
 @font-face {
