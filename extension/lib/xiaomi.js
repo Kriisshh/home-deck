@@ -72,6 +72,13 @@ async function readCookie(name) {
   return all.find((c) => c.domain.endsWith('mi.com'))?.value ?? null;
 }
 
+/** Drop every cookie on the API hosts (ours and any the servers set), so the next call starts clean. */
+async function clearApiCookies() {
+  for (const c of await chrome.cookies.getAll({ domain: 'io.mi.com' })) {
+    await chrome.cookies.remove({ url: `https://${c.domain.replace(/^\./, '')}${c.path}`, name: c.name });
+  }
+}
+
 /** Run request() and pick serviceToken out of the Set-Cookie headers of any sts.api.io.mi.com response. */
 async function captureServiceToken(request) {
   let token = null;
@@ -182,7 +189,9 @@ export class XiaomiCloud {
 
   async _finishLogin(data) {
     // The STS endpoint hands out the service token as a cookie. Read it from the response headers
-    // (webRequest) and fall back to the cookie jar.
+    // (webRequest) and fall back to the cookie jar. Old cookies go first, so a new sign-in always
+    // starts clean.
+    await clearApiCookies();
     const serviceToken = await captureServiceToken(() => fetch(data.location, { credentials: 'include' }))
       ?? await readCookie('serviceToken');
     if (!serviceToken) throw new Error('Signed in, but Xiaomi did not hand out a service token');
@@ -208,12 +217,15 @@ export class XiaomiCloud {
     const res = await fetch('https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true', { credentials: 'include' });
     const data = parseMi(await res.text());
     if (!data.ssecurity || !data.location) throw new NotSignedIn('Xiaomi session expired - sign in again in Settings');
-    const clientSign = b64encode(await sha1(utf8.encode(`nonce=${data.nonce}&${data.ssecurity}`)));
-    return this._finishLogin({
-      ...s, ...data,
-      location: `${data.location}&clientSign=${encodeURIComponent(clientSign)}`,
-      passToken: data.passToken || s.passToken,
-    });
+    const login = { ...s, ...data, passToken: data.passToken || s.passToken };
+    // Since Oct 2026 the STS endpoint only hands out a token for the plain location; older servers
+    // wanted a clientSign appended, so that stays as the fallback.
+    try {
+      return await this._finishLogin(login);
+    } catch {
+      const clientSign = b64encode(await sha1(utf8.encode(`nonce=${data.nonce}&${data.ssecurity}`)));
+      return this._finishLogin({ ...login, location: `${data.location}&clientSign=${encodeURIComponent(clientSign)}` });
+    }
   }
 
   async _installApiCookies(s) {
@@ -245,11 +257,14 @@ export class XiaomiCloud {
       },
     });
     const text = await res.text();
-    // Xiaomi answers an expired or mismatched sign-in with 400 as well as 401/403: renew it once
-    // with the long-lived passToken, and if that doesn't help, ask for a fresh QR sign-in.
-    if (res.status === 400 || res.status === 401 || res.status === 403) {
+    // Xiaomi answers an expired or mismatched sign-in with 400 as well as 401/403, and a browser
+    // left running for weeks can end up with stale cookies it answers with 426. Clear the cookies,
+    // renew the sign-in once with the long-lived passToken, and only if that doesn't help ask for a
+    // fresh QR sign-in.
+    if ([400, 401, 403, 426].includes(res.status)) {
       if (retry) {
         this._cookiesFor = null;
+        await clearApiCookies();
         try {
           await this._refresh();
         } catch {
