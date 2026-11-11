@@ -6,6 +6,8 @@ import { b64decode, b64encode, concat, rc4, sha1, sha256, utf8, utf8d } from './
 import { load, remove, save } from './store.js';
 
 const SESSION_KEY = 'mi.session';
+const RENEW_ERROR_KEY = 'mi.lastRenewError';
+const RENEW_EVERY = 24 * 3600 * 1000; // renew a day-old sign-in ahead of time, so it never goes stale
 const SPEC_KEY = (model) => `mi.spec.${model}`;
 const COOKIE_DOMAIN = '.io.mi.com';
 const USER_AGENT = 'Android-7.1.1-1.0.0-ONEPLUS A3010-136-HOMEDECK APP/xiaomi.smarthome APPV/62830';
@@ -120,13 +122,14 @@ export async function installHeaderRules() {
 export class XiaomiCloud {
   constructor(region = 'cn') {
     this.region = region;
-    this._session = undefined;
     this._cookiesFor = null;
   }
 
+  // The panel and the background worker each have their own XiaomiCloud and stay open for weeks.
+  // Renewing hands out a new passToken, so a copy of the session kept in memory goes stale as soon
+  // as the other one renews: always read the shared one from storage.
   async session() {
-    if (this._session === undefined) this._session = await load(SESSION_KEY, null);
-    return this._session;
+    return load(SESSION_KEY, null);
   }
 
   async signedIn() {
@@ -134,7 +137,6 @@ export class XiaomiCloud {
   }
 
   async signOut() {
-    this._session = null;
     this._cookiesFor = null;
     await remove(SESSION_KEY);
   }
@@ -195,7 +197,7 @@ export class XiaomiCloud {
     const serviceToken = await captureServiceToken(() => fetch(data.location, { credentials: 'include' }))
       ?? await readCookie('serviceToken');
     if (!serviceToken) throw new Error('Signed in, but Xiaomi did not hand out a service token');
-    this._session = {
+    const session = {
       userId: String(data.userId),
       cUserId: data.cUserId,
       ssecurity: data.ssecurity,
@@ -204,19 +206,36 @@ export class XiaomiCloud {
       savedAt: Date.now(),
     };
     this._cookiesFor = null;
-    await save(SESSION_KEY, this._session);
-    return this._session;
+    await save(SESSION_KEY, session);
+    await remove(RENEW_ERROR_KEY);
+    return session;
   }
 
-  /** Renew an expired service token using the long-lived passToken from the QR sign-in. */
-  async _refresh() {
-    const s = await this.session();
+  /** Renew the service token with the long-lived passToken from the QR sign-in. Runs one at a time
+   *  across the panel and the background worker; if another one already renewed the token that
+   *  failed (staleToken), its result is used instead of renewing again. */
+  async _refresh(staleToken) {
+    return navigator.locks.request('home-deck-mi-renew', async () => {
+      const s = await this.session();
+      if (s?.serviceToken && s.serviceToken !== staleToken) return s;
+      try {
+        return await this._renew(s);
+      } catch (err) {
+        await save(RENEW_ERROR_KEY, { at: Date.now(), message: err.message });
+        throw err;
+      }
+    });
+  }
+
+  async _renew(s) {
     if (!s?.passToken) throw new NotSignedIn();
     await setCookie('https://account.xiaomi.com/', 'account.xiaomi.com', 'userId', s.userId);
     await setCookie('https://account.xiaomi.com/', 'account.xiaomi.com', 'passToken', s.passToken);
     const res = await fetch('https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true', { credentials: 'include' });
     const data = parseMi(await res.text());
-    if (!data.ssecurity || !data.location) throw new NotSignedIn('Xiaomi session expired - sign in again in Settings');
+    if (!data.ssecurity || !data.location) {
+      throw new NotSignedIn(`Xiaomi refused to renew the sign-in (${data.desc || data.description || `code ${data.code}`})`);
+    }
     const login = { ...s, ...data, passToken: data.passToken || s.passToken };
     // Since Oct 2026 the STS endpoint only hands out a token for the plain location; older servers
     // wanted a clientSign appended, so that stays as the fallback.
@@ -241,8 +260,11 @@ export class XiaomiCloud {
   // ------------------------------------------------------------------ API
 
   async call(path, data, retry = true) {
-    const s = await this.session();
+    let s = await this.session();
     if (!s?.serviceToken) throw new NotSignedIn();
+    if (retry && Date.now() - (s.savedAt || 0) > RENEW_EVERY) {
+      s = await this._refresh(s.serviceToken).catch(() => s); // early renewal is best-effort
+    }
     await this._installApiCookies(s);
 
     const url = apiBase(this.region) + path;
@@ -266,9 +288,9 @@ export class XiaomiCloud {
         this._cookiesFor = null;
         await clearApiCookies();
         try {
-          await this._refresh();
-        } catch {
-          throw new NotSignedIn('Xiaomi sign-in expired - Settings > Sign In with QR Code');
+          await this._refresh(s.serviceToken);
+        } catch (err) {
+          throw new NotSignedIn(`Xiaomi sign-in expired - Settings > Sign In with QR Code (${err.message})`);
         }
         return this.call(path, data, false);
       }
