@@ -448,6 +448,9 @@ dialog.sheet form { display: flex; flex-direction: column; min-height: 0; max-he
   background: transparent; border: 0; outline: none; padding: 6px 0;
 }
 .row input::placeholder { color: var(--label-3); }
+.row input.pct { flex: 0 0 56px; margin-left: auto; }
+.row .unit { color: var(--label-2); margin-left: -8px; }
+.row input[type="time"]::-webkit-calendar-picker-indicator { opacity: 0.5; }
 .row input:focus { color: var(--label); }
 .row select { appearance: none; cursor: pointer; text-align-last: right; padding-right: 18px;
   background: linear-gradient(45deg, transparent 50%, var(--label-3) 50%) right 6px center / 6px 6px no-repeat,

@@ -77,6 +77,8 @@ function tickClock() {
 // 100% = no layer, 0% = fully black. At 25% and below the layer also blocks touches, so the dark
 // panel can't be pressed by accident; the slider sits above it and always works.
 const DIM_LOCK_AT = 25;
+let setBrightness = () => {};
+let dimReady = Promise.resolve();
 function wireDimmer() {
   const apply = (v) => {
     const layer = $('dim-overlay');
@@ -84,6 +86,7 @@ function wireDimmer() {
     layer.classList.toggle('lock', v <= DIM_LOCK_AT);
   };
   let saveTimer = 0;
+  setBrightness = (v) => { slider.set(v); apply(v); save('ui.brightness', v); };
   const slider = makeSlider($('dim-slider'), {
     min: 0, max: 100, step: 1,
     onInput: (v) => {
@@ -92,7 +95,27 @@ function wireDimmer() {
       saveTimer = setTimeout(() => save('ui.brightness', v), 400);
     },
   });
-  load('ui.brightness', 100).then((v) => { slider.set(v); apply(v); });
+  dimReady = load('ui.brightness', 100).then((v) => { slider.set(v); apply(v); });
+}
+
+// Brightness schedule: at each scheduled time the slider moves to that time's level. It only acts
+// when the period changes (remembered across restarts), so dragging the slider yourself holds
+// until the next scheduled time.
+const toMinutes = (hhmm) => { const [h, m] = String(hhmm).split(':').map(Number); return h * 60 + (m || 0); };
+async function checkDimSchedule() {
+  if (!settings?.dimSchedule) return;
+  const night = toMinutes(settings.dimNightAt);
+  const day = toMinutes(settings.dimDayAt);
+  if (Number.isNaN(night) || Number.isNaN(day) || night === day) return;
+  const now = new Date().getHours() * 60 + new Date().getMinutes();
+  const isNight = night < day ? now >= night && now < day : now >= night || now < day;
+  const period = `${isNight ? 'night' : 'day'} ${settings.dimNightAt}-${settings.dimDayAt}`;
+  await dimReady;
+  if ((await load('ui.dimPeriod', '')) === period) return;
+  await save('ui.dimPeriod', period);
+  const raw = String(isNight ? settings.dimNightLevel : settings.dimDayLevel).trim();
+  const level = Number(raw);
+  if (raw !== '' && Number.isFinite(level)) setBrightness(Math.min(100, Math.max(0, Math.round(level))));
 }
 
 /** Keep the display awake while Home Deck is open (Settings > App > Keep Screen On). */
@@ -1168,6 +1191,7 @@ async function applySettings(next) {
   }
   if (!prev || prev.agentUrl !== next.agentUrl || prev.agentToken !== next.agentToken) initPc();
   renderWakeDevices();
+  checkDimSchedule();
   renderDeck();
 }
 
@@ -1289,7 +1313,7 @@ function wireControls() {
 
 async function main() {
   tickClock();
-  const everyMinute = () => { tickClock(); setTimeout(everyMinute, 60000 - (Date.now() % 60000) + 50); };
+  const everyMinute = () => { tickClock(); checkDimSchedule(); setTimeout(everyMinute, 60000 - (Date.now() % 60000) + 50); };
   setTimeout(everyMinute, 60000 - (Date.now() % 60000) + 50);
   PC.volTarget = await load('ui.volTarget', 'app');
   PC.actions = await load('pc.actions', []);

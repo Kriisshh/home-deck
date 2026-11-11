@@ -309,6 +309,16 @@
         </div>
         <p class="group-foot">Reduce Transparency swaps the frosted glass for solid colors. It's lighter on older graphics chips.</p>
 
+        <div class="group-title">Brightness Schedule</div>
+        <div class="group">
+          <label class="row"><span class="row-label">Schedule</span><input type="checkbox" class="switch" name="dimSchedule"></label>
+          <label class="row"><span class="row-label">Night From</span><input type="time" name="dimNightAt" required></label>
+          <label class="row"><span class="row-label">Night Brightness</span><input type="number" name="dimNightLevel" min="0" max="100" step="1" inputmode="numeric" class="pct"><span class="unit">%</span></label>
+          <label class="row"><span class="row-label">Day From</span><input type="time" name="dimDayAt" required></label>
+          <label class="row"><span class="row-label">Day Brightness</span><input type="number" name="dimDayLevel" min="0" max="100" step="1" inputmode="numeric" class="pct"><span class="unit">%</span></label>
+        </div>
+        <p class="group-foot">At each time the panel's brightness slider moves to that level. Moving the slider yourself holds until the next scheduled time. This dims the panel, not the screen's backlight, which Chrome doesn't let apps change.</p>
+
         <div class="group-title">Updates</div>
         <div class="group">
           <div class="row"><span class="row-label">Version</span><span class="row-value" id="upd-version"></span></div>

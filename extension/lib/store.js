@@ -19,6 +19,11 @@ export const DEFAULT_SETTINGS = {
   appearance: 'auto',
   reduceTransparency: false,
   keepScreenOn: true,
+  dimSchedule: true,      // panel brightness schedule (the black layer, not the backlight)
+  dimNightAt: '22:00',
+  dimNightLevel: '0',
+  dimDayAt: '05:30',
+  dimDayLevel: '100',
 };
 
 export async function load(key, fallback = null) {
