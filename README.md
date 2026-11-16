@@ -182,6 +182,28 @@ broadcasts reach the network (the Surface's Linux container can't do that).
    `{"mac": "00:D8:61:83:BD:59"}` to `http://<old phone's 100.x Tailscale address>:9009/wake`
    (e.g. with the HTTP Shortcuts app).
 
+## Phone notifications
+
+Home Deck can show your (Android) phone's notifications under Shortcuts: each app's icon in black
+and white plus the title, and a tap opens the full message. The always-on phone above keeps the list,
+so this needs that set up first.
+
+1. **Update the always-on phone.** In Termux, run the install command from the section above again.
+   It prints a **Notification key** at the end (later updates install themselves on each reboot).
+2. **Home Deck** → Settings → **Phone Notifications** → Notification Key = that key → **Done**.
+3. **Main phone:** install **MacroDroid** (Play Store) → **Add Macro**:
+   - **Trigger:** Applications → **Notification** → *Notification Received* → **Any Application**
+     (exclude MacroDroid) → *Ignore ongoing*.
+   - **Action:** Connectivity → **HTTP Request** → **POST**, URL
+     `http://<always-on phone's 100.x Tailscale address>:9009/notify`. Under **Query parameters** add
+     `key` = your key, `app` = `{not_app_name}`, `pkg` = `{not_app_package}`, `title` = `{not_title}`,
+     `text` = `{notification}` (pick each from the **…** magic-text list).
+   - Allow MacroDroid notification access when it asks. Tailscale on the main phone lets this work
+     away from home too.
+
+The list keeps the last 60 notifications for 3 days. Dismissing one, or **Clear** (tap twice), only
+removes it from Home Deck, not from your phone.
+
 ## Wake-on-LAN with extra hardware (alternative)
 
 Chrome can't send Wake-on-LAN packets, and the Huawei AX2 Pro has no usable WoL, so you'll need a

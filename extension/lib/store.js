@@ -19,6 +19,8 @@ export const DEFAULT_SETTINGS = {
   appearance: 'auto',
   reduceTransparency: false,
   keepScreenOn: true,
+  notifyKey: '',          // phone notifications: key from the always-on phone's wake service
+  notifyUrl: '',          // its address; blank = the Wake URL's server
   dimSchedule: true,      // panel brightness schedule (the black layer, not the backlight)
   dimNightAt: '22:00',
   dimNightLevel: '0',

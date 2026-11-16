@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Home Deck wake service for the Chrome OS Linux container (penguin).
+"""Home Deck wake service (runs on the always-on Android phone in Termux, or a Linux box).
 
 Chrome can't send Wake-on-LAN packets, but Linux can. This listens on port 9009 and, when Home Deck
 POSTs to /wake, broadcasts a magic packet for the given MAC address. It sleeps in accept() the rest
@@ -11,15 +11,127 @@ of the time, so it costs nothing while idle. Standard library only.
 import json
 import os
 import re
+import secrets
 import socket
 import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import time
+import urllib.parse
+import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = 9009
 # Optional port forwards, e.g. {"20388": "192.168.3.4"} sends anything arriving on port 20388 (TCP and
 # UDP) to the laptop - so a remote app (Wolow Companion commands) can reach it through this device.
 FORWARDS_FILE = os.path.expanduser("~/.home-deck-forwards.json")
 TARGETS = [("255.255.255.255", 9), ("255.255.255.255", 7)]  # plus this network's x.y.z.255, see send()
+
+# Phone notifications: the phone (MacroDroid) POSTs each one to /notify, Home Deck reads /notifications.
+# Both need the key in ~/.home-deck-notify-key (made on first run), because notifications are private.
+NOTIFY_FILE = os.path.expanduser("~/.home-deck-notifications.json")
+NOTIFY_KEY_FILE = os.path.expanduser("~/.home-deck-notify-key")
+ICON_DIR = os.path.expanduser("~/.home-deck-icons")
+NOTIFY_MAX = 60
+NOTIFY_MAX_AGE = 3 * 24 * 3600 * 1000  # ms
+notify_lock = threading.Lock()
+
+
+def notify_key() -> str:
+    try:
+        with open(NOTIFY_KEY_FILE, encoding="utf-8") as f:
+            key = f.read().strip()
+            if key:
+                return key
+    except OSError:
+        pass
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O or 1/I mix-ups
+    raw = "".join(secrets.choice(alphabet) for _ in range(8))
+    key = f"{raw[:4]}-{raw[4:]}"
+    with open(NOTIFY_KEY_FILE, "w", encoding="utf-8") as f:
+        f.write(key + "\n")
+    return key
+
+
+def _norm_key(k: str) -> str:
+    return re.sub(r"[^0-9A-Z]", "", str(k).upper())
+
+
+def load_notifications() -> dict:
+    try:
+        with open(NOTIFY_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+            return {"next": int(data.get("next", 1)), "items": list(data.get("items", []))}
+    except (OSError, ValueError):
+        return {"next": 1, "items": []}
+
+
+def save_notifications(data: dict) -> None:
+    tmp = NOTIFY_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
+    os.replace(tmp, NOTIFY_FILE)
+
+
+NOTIFICATIONS = load_notifications()
+
+
+def add_notification(fields: dict) -> dict | None:
+    def clean(key: str, limit: int) -> str:
+        value = str(fields.get(key, "") or "").strip()[:limit]
+        # MacroDroid sends an unknown magic-text placeholder as-is; treat it as empty.
+        return "" if re.fullmatch(r"[{\[][a-z_]+[}\]]", value) else value
+
+    item = {"app": clean("app", 80), "pkg": clean("pkg", 120), "title": clean("title", 200), "text": clean("text", 4000)}
+    if not item["title"] and not item["text"]:
+        return None
+    now = int(time.time() * 1000)
+    with notify_lock:
+        items = [i for i in NOTIFICATIONS["items"] if now - i["t"] < NOTIFY_MAX_AGE]
+        # Apps often re-post the same notification (updates, summaries): keep one.
+        same = lambda i: (i["pkg"], i["app"], i["title"], i["text"]) == (item["pkg"], item["app"], item["title"], item["text"])
+        for i in items:
+            if same(i) and now - i["t"] < 60000:
+                return i
+        item.update(id=NOTIFICATIONS["next"], t=now)
+        NOTIFICATIONS["next"] += 1
+        NOTIFICATIONS["items"] = (items + [item])[-NOTIFY_MAX:]
+        save_notifications(NOTIFICATIONS)
+    return item
+
+
+def dismiss_notifications(ids=None) -> None:
+    with notify_lock:
+        NOTIFICATIONS["items"] = [] if ids is None else [i for i in NOTIFICATIONS["items"] if i["id"] not in ids]
+        save_notifications(NOTIFICATIONS)
+
+
+def app_icon(pkg: str) -> bytes | None:
+    """The app's Play Store icon (96 px), fetched once and cached; None if it can't be found."""
+    if not re.fullmatch(r"[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)+", pkg or ""):
+        return None
+    os.makedirs(ICON_DIR, exist_ok=True)
+    path = os.path.join(ICON_DIR, pkg + ".png")
+    try:
+        if os.path.getsize(path) > 0:
+            with open(path, "rb") as f:
+                return f.read()
+        if time.time() - os.path.getmtime(path) < 24 * 3600:
+            return None  # looked it up recently and found nothing
+    except OSError:
+        pass
+    data = b""
+    try:
+        req = urllib.request.Request(f"https://play.google.com/store/apps/details?id={pkg}&hl=en",
+                                     headers={"User-Agent": "Mozilla/5.0"})
+        html = urllib.request.urlopen(req, timeout=10).read().decode("utf-8", "replace")
+        m = re.search(r'<meta property="og:image" content="([^"]+)"', html)
+        if m:
+            url = re.sub(r"=[^/=]*$", "", m.group(1)) + "=s96"
+            data = urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read()
+    except (OSError, ValueError):
+        data = b""
+    with open(path, "wb") as f:
+        f.write(data)
+    return data or None
 
 
 def magic_packet(mac: str) -> bytes:
@@ -63,7 +175,7 @@ def send(mac: str, ip: str = "") -> None:
 class Handler(BaseHTTPRequestHandler):
     def _cors(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Key")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Private-Network", "true")  # Chrome: page -> private address
         self.send_header("Access-Control-Max-Age", "600")
@@ -84,11 +196,61 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
+    def _authorised(self, query: dict) -> bool:
+        given = self.headers.get("X-Key") or query.get("key", [""])[0]
+        return bool(given) and secrets.compare_digest(_norm_key(given), _norm_key(notify_key()))
+
+    def _fields(self, query: dict) -> dict:
+        """Fields from the query string plus a JSON or form body (MacroDroid can send either)."""
+        fields = {k: v[0] for k, v in query.items()}
+        body = self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b""
+        if body:
+            text = body.decode("utf-8", "replace")
+            try:
+                parsed = json.loads(text)
+                if isinstance(parsed, dict):
+                    fields.update(parsed)
+            except ValueError:
+                fields.update({k: v[0] for k, v in urllib.parse.parse_qs(text, keep_blank_values=True).items()})
+        return fields
+
     def do_GET(self):
-        self._reply(200, {"ok": True, "app": "home-deck-wol"})
+        url = urllib.parse.urlsplit(self.path)
+        path, query = url.path.rstrip("/"), urllib.parse.parse_qs(url.query)
+        if path in ("/notifications", "/icon") and not self._authorised(query):
+            return self._reply(401, {"ok": False, "error": "wrong or missing key"})
+        if path == "/notifications":
+            with notify_lock:
+                items = list(NOTIFICATIONS["items"])
+            return self._reply(200, {"ok": True, "items": items})
+        if path == "/icon":
+            data = app_icon(query.get("pkg", [""])[0])
+            if not data:
+                return self._reply(404, {"ok": False, "error": "no icon"})
+            self.send_response(200)
+            self._cors()
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Cache-Control", "max-age=604800")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
+        self._reply(200, {"ok": True, "app": "home-deck-wol", "notifications": True})
 
     def do_POST(self):
-        if self.path.rstrip("/") != "/wake":
+        url = urllib.parse.urlsplit(self.path)
+        path, query = url.path.rstrip("/"), urllib.parse.parse_qs(url.query)
+        if path in ("/notify", "/notifications/dismiss"):
+            if not self._authorised(query):
+                return self._reply(401, {"ok": False, "error": "wrong or missing key"})
+            fields = self._fields(query)
+            if path == "/notify":
+                item = add_notification(fields)
+                return self._reply(200, {"ok": True, "id": item and item["id"]})
+            ids = fields.get("ids") or []
+            dismiss_notifications(None if fields.get("all") else {int(i) for i in ids})
+            return self._reply(200, {"ok": True})
+        if path != "/wake":
             return self._reply(404, {"ok": False, "error": "not found"})
         try:
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
@@ -197,4 +359,5 @@ if __name__ == "__main__":
         threading.Thread(target=tcp_forward, args=(fwd_port, fwd_host), daemon=True).start()
         threading.Thread(target=udp_forward, args=(fwd_port, fwd_host), daemon=True).start()
     threading.Thread(target=udp_relay, daemon=True).start()
-    HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
+    notify_key()  # make the key on first run, so it can be shown to the user
+    ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

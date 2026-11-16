@@ -4,6 +4,7 @@ import { load, loadSettings, onChange, save, saveSettings } from './lib/store.js
 import * as updater from './lib/updater.js';
 import { DeckEditor, iconFor } from './lib/deck-editor.js';
 import { NotSignedIn, XiaomiCloud, acModelFromSpec } from './lib/xiaomi.js';
+import { PhoneNotifications, notifyBase } from './lib/notify.js';
 
 const $ = (id) => document.getElementById(id);
 const isExtension = typeof chrome !== 'undefined' && !!chrome.runtime?.id;
@@ -23,7 +24,7 @@ for (const type of ['pointerdown', 'keydown']) {
   document.addEventListener(type, () => {
     const wasIdle = isIdle();
     lastInteraction = Date.now();
-    if (wasIdle && typeof pollPc === 'function') { pollPc(); pollAc(); } // refresh right away on wake
+    if (wasIdle && typeof pollPc === 'function') { pollPc(); pollAc(); pollNotify(); } // refresh right away on wake
   }, { capture: true, passive: true });
 }
 
@@ -873,6 +874,129 @@ function renderWakeDevices() {
   }, icon('bolt'), d.name)));
 }
 
+// ======================================================================= phone notifications
+
+// The always-on phone keeps the main phone's notifications (forwarded by MacroDroid); the card lists
+// them with the app's icon in black and white and the title, and a tap opens the whole thing.
+const NT = { client: null, items: [], sig: '', timer: 0, icons: new Map(), current: null, clearArmed: 0 };
+
+function initNotify() {
+  clearTimeout(NT.timer);
+  const base = notifyBase(settings);
+  const key = String(settings.notifyKey || '').trim();
+  NT.client = key && base ? new PhoneNotifications(base, key) : null;
+  NT.items = [];
+  NT.sig = '';
+  $('notify').hidden = !NT.client;
+  if (NT.client) pollNotify();
+}
+
+async function pollNotify() {
+  clearTimeout(NT.timer);
+  if (!NT.client) return;
+  let wait = isIdle() ? 30000 : 8000;
+  try {
+    const items = await NT.client.list();
+    const sig = items.map((i) => i.id).join(',');
+    if (sig !== NT.sig) {
+      NT.sig = sig;
+      NT.items = items;
+      renderNotify();
+    }
+  } catch (err) {
+    $('nt-sub').textContent = err.status === 401 ? 'Wrong key - check Settings' : "Can't reach the phone";
+    wait = 30000;
+  }
+  NT.timer = setTimeout(pollNotify, wait);
+}
+
+function ntTime(t) {
+  const mins = Math.floor((Date.now() - t) / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  if (mins < 24 * 60) return `${Math.floor(mins / 60)}h`;
+  return new Date(t).toLocaleDateString(undefined, { weekday: 'short' });
+}
+
+/** Rounded icon: the app's black-and-white icon once it's loaded, its first letter until then. */
+function ntIcon(item, big = false) {
+  const box = el('span', { class: `nt-icon${big ? ' big' : ''}`, 'aria-hidden': 'true' });
+  const show = (url) => (url ? box.replaceChildren(el('img', { src: url, alt: '' })) : box.replaceChildren((item.app || item.pkg || '?').trim().charAt(0).toUpperCase()));
+  const known = NT.icons.get(item.pkg);
+  show(known);
+  if (known === undefined && item.pkg && NT.client) {
+    NT.icons.set(item.pkg, null); // one lookup per app at a time
+    NT.client.monoIcon(item.pkg).then((url) => {
+      NT.icons.set(item.pkg, url);
+      if (url) for (const node of document.querySelectorAll(`.nt-icon[data-pkg="${CSS.escape(item.pkg)}"]`)) node.replaceChildren(el('img', { src: url, alt: '' }));
+    });
+  }
+  box.dataset.pkg = item.pkg || '';
+  return box;
+}
+
+const ntHeadline = (item) => item.title || item.text.split('\n')[0];
+
+function renderNotify() {
+  const card = $('notify');
+  card.dataset.empty = String(!NT.items.length);
+  $('nt-sub').textContent = NT.items.length ? `${NT.items.length} from your phone` : '';
+  $('nt-list').replaceChildren(...NT.items.map((item) => el('button', {
+    type: 'button', class: 'nt-row', role: 'listitem', onclick: () => openNotification(item),
+  }, ntIcon(item),
+  el('span', { class: 'nt-main' }, el('span', { class: 'nt-title' }, ntHeadline(item)), el('span', { class: 'nt-app' }, item.app || item.pkg || 'Phone')),
+  el('span', { class: 'nt-time', dataset: { t: item.t } }, ntTime(item.t)))));
+}
+
+function refreshNotifyTimes() {
+  for (const node of document.querySelectorAll('.nt-time[data-t]')) node.textContent = ntTime(Number(node.dataset.t));
+}
+
+function openNotification(item) {
+  NT.current = item;
+  $('nt-sheet-app').textContent = item.app || item.pkg || 'Notification';
+  $('nt-sheet-icon').replaceWith(Object.assign(ntIcon(item, true), { id: 'nt-sheet-icon' }));
+  $('nt-sheet-title').textContent = item.title || item.app || 'Notification';
+  $('nt-sheet-time').textContent = new Date(item.t).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit', day: 'numeric', month: 'short' });
+  $('nt-sheet-text').textContent = item.text;
+  $('nt-sheet').showModal();
+}
+
+async function dismissNotification() {
+  const item = NT.current;
+  $('nt-sheet').close();
+  if (!item || !NT.client) return;
+  NT.items = NT.items.filter((i) => i.id !== item.id);
+  NT.sig = NT.items.map((i) => i.id).join(',');
+  renderNotify();
+  try { await NT.client.dismiss([item.id]); } catch (err) { toast(err.message, true); pollNotify(); }
+}
+
+async function clearNotifications() {
+  const btn = $('nt-clear');
+  if (Date.now() > NT.clearArmed) { // first tap arms it, like the shortcut buttons' "tap again"
+    NT.clearArmed = Date.now() + 3000;
+    btn.textContent = 'Clear All?';
+    btn.classList.add('confirm');
+    setTimeout(() => { btn.textContent = 'Clear'; btn.classList.remove('confirm'); }, 3000);
+    return;
+  }
+  NT.clearArmed = 0;
+  btn.textContent = 'Clear';
+  btn.classList.remove('confirm');
+  NT.items = [];
+  NT.sig = '';
+  renderNotify();
+  try { await NT.client?.clearAll(); } catch (err) { toast(err.message, true); pollNotify(); }
+}
+
+function wireNotify() {
+  $('nt-clear').addEventListener('click', clearNotifications);
+  $('nt-close').addEventListener('click', () => $('nt-sheet').close());
+  $('nt-dismiss').addEventListener('click', dismissNotification);
+  $('nt-sheet').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); }); // tap outside
+}
+
 // ======================================================================= self-update
 
 const UPDATE = { latest: null, sha: null, checkedAt: 0, busy: false };
@@ -1087,7 +1211,7 @@ async function onSaveSettings(event) {
   // If it's refused, settings are still saved and the PC card offers an "Allow Access" button.
   let allowed = true;
   if (isExtension) {
-    const origins = [originPattern(next.agentUrl), originPattern(next.wakeUrl)].filter(Boolean);
+    const origins = [originPattern(next.agentUrl), originPattern(next.wakeUrl), originPattern(notifyBase(next))].filter(Boolean);
     if (origins.length) allowed = await chrome.permissions.request({ origins }).catch(() => false);
   }
 
@@ -1217,6 +1341,7 @@ async function applySettings(next) {
   }
   if (!prev || prev.agentUrl !== next.agentUrl || prev.agentToken !== next.agentToken) initPc();
   renderWakeDevices();
+  if (!prev || prev.notifyKey !== next.notifyKey || prev.notifyUrl !== next.notifyUrl || prev.wakeUrl !== next.wakeUrl) initNotify();
   checkDimSchedule();
   renderDeck();
 }
@@ -1296,6 +1421,7 @@ async function showKeys() {
 // ======================================================================= wiring
 
 function wireControls() {
+  wireNotify();
   $('ac-power').addEventListener('click', () => acDo(() => ac.togglePower()));
   $('ac-up').addEventListener('click', () => nudgeTemp(1));
   $('ac-down').addEventListener('click', () => nudgeTemp(-1));
@@ -1339,7 +1465,7 @@ function wireControls() {
 
 async function main() {
   tickClock();
-  const everyMinute = () => { tickClock(); checkDimSchedule(); setTimeout(everyMinute, 60000 - (Date.now() % 60000) + 50); };
+  const everyMinute = () => { tickClock(); checkDimSchedule(); refreshNotifyTimes(); setTimeout(everyMinute, 60000 - (Date.now() % 60000) + 50); };
   setTimeout(everyMinute, 60000 - (Date.now() % 60000) + 50);
   PC.volTarget = await load('ui.volTarget', 'app');
   PC.actions = await load('pc.actions', []);
