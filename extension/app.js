@@ -27,6 +27,32 @@ for (const type of ['pointerdown', 'keydown']) {
   }, { capture: true, passive: true });
 }
 
+// Right-click proof: on the Surface's touch screen a slightly long tap often arrives as a right-click
+// (long-press) instead of a click, so nothing happened. Treat a right-click on anything tappable as a
+// normal tap. Text fields keep their menu (for paste); sliders and the dial just ignore it.
+const TAPPABLE = 'button, a[href], label, summary, [role="button"], [role="option"], [role="tab"], input[type="checkbox"], input[type="radio"]';
+let tapEchoUntil = 0;
+let tapEchoTarget = null;
+document.addEventListener('contextmenu', (e) => {
+  if (e.target.closest('input:not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable="true"]')) return;
+  e.preventDefault();
+  const target = e.target.closest(TAPPABLE);
+  if (!target || target.disabled || target.closest('[role="slider"], .dial')) return;
+  target.click();
+  // Some touch long-presses still send their own click when the finger lifts: swallow that one,
+  // so the tap doesn't run twice (twice would undo a toggle or confirm a "tap again" button).
+  tapEchoUntil = Date.now() + 1000;
+  tapEchoTarget = target;
+}, { capture: true });
+document.addEventListener('click', (e) => {
+  if (e.isTrusted && Date.now() < tapEchoUntil && tapEchoTarget?.contains(e.target)) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }
+  tapEchoUntil = 0;
+}, { capture: true });
+document.addEventListener('pointerdown', () => { tapEchoUntil = 0; }, { capture: true }); // a new press is a real tap
+
 let toastTimer = 0;
 function toast(message, isError = false) {
   const el = $('toast');
