@@ -904,7 +904,7 @@ async function pollNotify() {
       renderNotify();
     }
   } catch (err) {
-    $('nt-sub').textContent = err.status === 401 ? 'Wrong key - check Settings' : "Can't reach the phone";
+    $('nt-sub').textContent = err.status === 401 ? 'Wrong key - check Settings' : `Can't reach ${new URL(NT.client.base).host}`;
     wait = 30000;
   }
   NT.timer = setTimeout(pollNotify, wait);
