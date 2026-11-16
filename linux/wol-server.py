@@ -81,16 +81,20 @@ def add_notification(fields: dict) -> dict | None:
         return "" if re.fullmatch(r"[{\[][a-z_]+[}\]]", value) else value
 
     item = {"app": clean("app", 80), "pkg": clean("pkg", 120), "title": clean("title", 200), "text": clean("text", 4000)}
+    nkey = clean("nkey", 300)  # the phone's id for this notification (Home Deck Notify app)
     if not item["title"] and not item["text"]:
         return None
     now = int(time.time() * 1000)
     with notify_lock:
         items = [i for i in NOTIFICATIONS["items"] if now - i["t"] < NOTIFY_MAX_AGE]
-        # Apps often re-post the same notification (updates, summaries): keep one.
+        # Apps often re-post the same notification unchanged (alerts, summaries): keep the one shown.
         same = lambda i: (i["pkg"], i["app"], i["title"], i["text"]) == (item["pkg"], item["app"], item["title"], item["text"])
         for i in items:
-            if same(i) and now - i["t"] < 60000:
+            if same(i) and (i.get("nkey") == nkey if nkey else now - i["t"] < 60000):
                 return i
+        if nkey:  # an update to a notification already shown (e.g. a second message): replace it
+            items = [i for i in items if i.get("nkey") != nkey]
+            item["nkey"] = nkey
         item.update(id=NOTIFICATIONS["next"], t=now)
         NOTIFICATIONS["next"] += 1
         NOTIFICATIONS["items"] = (items + [item])[-NOTIFY_MAX:]
@@ -98,9 +102,14 @@ def add_notification(fields: dict) -> dict | None:
     return item
 
 
-def dismiss_notifications(ids=None) -> None:
+def dismiss_notifications(ids=None, nkeys=None) -> None:
+    """Remove by id (from Home Deck), by phone key (cleared on the phone), or everything."""
     with notify_lock:
-        NOTIFICATIONS["items"] = [] if ids is None else [i for i in NOTIFICATIONS["items"] if i["id"] not in ids]
+        if ids is None and nkeys is None:
+            NOTIFICATIONS["items"] = []
+        else:
+            NOTIFICATIONS["items"] = [i for i in NOTIFICATIONS["items"]
+                                      if i["id"] not in (ids or ()) and i.get("nkey") not in (nkeys or ())]
         save_notifications(NOTIFICATIONS)
 
 
@@ -247,8 +256,10 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/notify":
                 item = add_notification(fields)
                 return self._reply(200, {"ok": True, "id": item and item["id"]})
-            ids = fields.get("ids") or []
-            dismiss_notifications(None if fields.get("all") else {int(i) for i in ids})
+            if fields.get("all"):
+                dismiss_notifications()
+            else:
+                dismiss_notifications({int(i) for i in fields.get("ids") or []}, {str(k) for k in fields.get("nkeys") or []})
             return self._reply(200, {"ok": True})
         if path != "/wake":
             return self._reply(404, {"ok": False, "error": "not found"})
