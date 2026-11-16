@@ -941,11 +941,69 @@ function renderNotify() {
   const card = $('notify');
   card.dataset.empty = String(!NT.items.length);
   $('nt-sub').textContent = NT.items.length ? `${NT.items.length} from your phone` : '';
-  $('nt-list').replaceChildren(...NT.items.map((item) => el('button', {
+  $('nt-list').replaceChildren(...NT.items.map((item) => swipeToDismiss(el('button', {
     type: 'button', class: 'nt-row', role: 'listitem', onclick: () => openNotification(item),
   }, ntIcon(item),
   el('span', { class: 'nt-main' }, el('span', { class: 'nt-title' }, ntHeadline(item)), el('span', { class: 'nt-app' }, item.app || item.pkg || 'Phone')),
-  el('span', { class: 'nt-time', dataset: { t: item.t } }, ntTime(item.t)))));
+  el('span', { class: 'nt-time', dataset: { t: item.t } }, ntTime(item.t))), item)));
+}
+
+/** Slide a notification left or right to dismiss it, like on iOS. Vertical drags still scroll the list. */
+function swipeToDismiss(row, item) {
+  let start = null;
+  let dx = 0;
+  let dragging = false;
+  let swallowClick = false;
+  const reset = () => {
+    row.classList.remove('dragging');
+    row.style.transform = '';
+    row.style.opacity = '';
+  };
+  row.addEventListener('pointerdown', (e) => {
+    if (e.button > 0) return;
+    start = { x: e.clientX, y: e.clientY, t: e.timeStamp, id: e.pointerId };
+    dx = 0;
+    dragging = false;
+  });
+  row.addEventListener('pointermove', (e) => {
+    if (!start || e.pointerId !== start.id) return;
+    const mx = e.clientX - start.x;
+    const my = e.clientY - start.y;
+    if (!dragging) {
+      if (Math.abs(mx) < 10 || Math.abs(mx) < Math.abs(my) * 1.5) return; // not (yet) a sideways slide
+      dragging = true;
+      row.setPointerCapture(e.pointerId);
+      row.classList.add('dragging');
+    }
+    dx = mx;
+    row.style.transform = `translateX(${dx}px)`;
+    row.style.opacity = String(Math.max(0.2, 1 - Math.abs(dx) / row.offsetWidth));
+  });
+  const end = (e) => {
+    if (!start || e.pointerId !== start.id) return;
+    const wasDragging = dragging;
+    const fast = Math.abs(dx) / Math.max(1, e.timeStamp - start.t) > 0.6; // a quick flick counts too
+    start = null;
+    dragging = false;
+    if (!wasDragging) return;
+    swallowClick = true; // the slide shouldn't also open the notification
+    setTimeout(() => { swallowClick = false; }, 0);
+    if (e.type === 'pointerup' && (Math.abs(dx) > row.offsetWidth * 0.35 || (fast && Math.abs(dx) > 40))) {
+      row.classList.remove('dragging');
+      row.classList.add('gone');
+      row.style.transform = `translateX(${Math.sign(dx) * row.offsetWidth * 1.1}px)`;
+      row.style.opacity = '0';
+      setTimeout(() => dismissNotification(item), 220);
+    } else {
+      reset(); // not far enough: spring back
+    }
+  };
+  row.addEventListener('pointerup', end);
+  row.addEventListener('pointercancel', end);
+  row.addEventListener('click', (e) => {
+    if (swallowClick) { e.stopImmediatePropagation(); e.preventDefault(); }
+  }, { capture: true });
+  return row;
 }
 
 function refreshNotifyTimes() {
@@ -962,9 +1020,8 @@ function openNotification(item) {
   $('nt-sheet').showModal();
 }
 
-async function dismissNotification() {
-  const item = NT.current;
-  $('nt-sheet').close();
+async function dismissNotification(item = NT.current) {
+  if ($('nt-sheet').open) $('nt-sheet').close();
   if (!item || !NT.client) return;
   NT.items = NT.items.filter((i) => i.id !== item.id);
   NT.sig = NT.items.map((i) => i.id).join(',');
@@ -993,7 +1050,7 @@ async function clearNotifications() {
 function wireNotify() {
   $('nt-clear').addEventListener('click', clearNotifications);
   $('nt-close').addEventListener('click', () => $('nt-sheet').close());
-  $('nt-dismiss').addEventListener('click', dismissNotification);
+  $('nt-dismiss').addEventListener('click', () => dismissNotification());
   $('nt-sheet').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); }); // tap outside
 }
 

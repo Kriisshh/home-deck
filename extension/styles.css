@@ -415,10 +415,13 @@ code { font: 12px var(--mono); }
 .nt-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; min-height: 0; margin: -4px; padding: 4px; scrollbar-width: thin; }
 .nt-row {
   display: flex; align-items: center; gap: 11px; width: 100%; min-height: 50px; padding: 8px 12px; text-align: left;
-  border-radius: 14px; background: var(--fill); transition: transform .25s var(--spring), background .15s;
+  border-radius: 14px; background: var(--fill); transition: transform .25s var(--spring), opacity .25s, background .15s;
 }
 .nt-row:hover { background: var(--fill-2); }
-.nt-row:active { transform: scale(0.97); }
+.nt-row:active:not(.dragging) { transform: scale(0.97); }
+.nt-row { touch-action: pan-y; } /* sideways drags are ours (swipe to dismiss), vertical ones scroll */
+.nt-row.dragging { transition: none; }
+.nt-row.gone { transition: transform .22s ease-in, opacity .22s ease-in; pointer-events: none; }
 .nt-icon {
   width: 30px; height: 30px; border-radius: 8px; flex: none; overflow: hidden;
   display: grid; place-items: center; background: var(--fill-strong); color: var(--label);
