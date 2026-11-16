@@ -43,10 +43,10 @@ public class SettingsActivity extends Activity {
         col.addView(label("Server (Tailscale)"), gap(28));
         url = input(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         col.addView(url);
-        col.addView(label("Server on home Wi-Fi"), gap(16));
+        col.addView(label("Home addresses (comma-separated)"), gap(16));
         lanUrl = input(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         col.addView(lanUrl);
-        TextView lanNote = text("Used when Tailscale is off and you're at home. While neither works, notifications wait and are sent later.", 13, false);
+        TextView lanNote = text("Tried in order when Tailscale is off. While none works, notifications wait and are sent later.", 13, false);
         lanNote.setAlpha(0.6f);
         col.addView(lanNote, gap(4));
         col.addView(label("Notification key"), gap(16));
@@ -91,7 +91,12 @@ public class SettingsActivity extends Activity {
 
     private void save(boolean toast) {
         String u = withScheme(Forwarder.clean(url.getText().toString()));
-        String l = withScheme(Forwarder.clean(lanUrl.getText().toString()));
+        StringBuilder lb = new StringBuilder();
+        for (String part : lanUrl.getText().toString().split("[,\\s]+")) {
+            String c = withScheme(Forwarder.clean(part));
+            if (!c.isEmpty()) lb.append(lb.length() > 0 ? ", " : "").append(c);
+        }
+        String l = lb.toString();
         Forwarder.prefs(this).edit().putString("url", u).putString("lanUrl", l)
                 .putString("key", key.getText().toString().trim()).commit();
         url.setText(u);
@@ -106,7 +111,7 @@ public class SettingsActivity extends Activity {
 
     private void sendTest() {
         save(false);
-        String[] bases = { Forwarder.prefs(this).getString("url", ""), Forwarder.prefs(this).getString("lanUrl", "") };
+        java.util.List<String> bases = Forwarder.addresses(Forwarder.prefs(this));
         String k = Forwarder.prefs(this).getString("key", "");
         status.setText("Sending…");
         new Thread(() -> {

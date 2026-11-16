@@ -59,7 +59,7 @@ final class Forwarder {
     private static void flushNow(Context app) {
         SharedPreferences p = prefs(app);
         // Tailscale first (works anywhere); without Tailscale, the home Wi-Fi address still works at home.
-        String[] bases = { clean(p.getString("url", DEFAULT_URL)), clean(p.getString("lanUrl", DEFAULT_LAN_URL)) };
+        java.util.List<String> bases = addresses(p);
         String key = p.getString("key", "").trim();
         if (key.isEmpty()) return;
         while (true) {
@@ -92,6 +92,15 @@ final class Forwarder {
             }
             status(app, "Last sent " + java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date()));
         }
+    }
+
+    /** Tailscale address first, then each home address (several allowed, separated by commas or spaces). */
+    static java.util.List<String> addresses(SharedPreferences p) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        out.add(clean(p.getString("url", DEFAULT_URL)));
+        for (String part : p.getString("lanUrl", DEFAULT_LAN_URL).split("[,\\s]+")) out.add(clean(part));
+        out.removeIf(String::isEmpty);
+        return out;
     }
 
     static String clean(String url) {
