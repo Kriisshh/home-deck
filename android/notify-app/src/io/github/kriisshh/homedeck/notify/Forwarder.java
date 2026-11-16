@@ -22,7 +22,8 @@ import java.util.concurrent.Executors;
  */
 final class Forwarder {
     static final String PREFS = "settings";
-    static final String DEFAULT_URL = "http://100.107.6.16:9009";
+    static final String DEFAULT_URL = "http://100.107.6.16:9009";     // always-on phone over Tailscale
+    static final String DEFAULT_LAN_URL = "http://192.168.3.6:9009";  // the same phone on home Wi-Fi
     private static final int QUEUE_MAX = 100;
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor();
 
@@ -57,7 +58,8 @@ final class Forwarder {
 
     private static void flushNow(Context app) {
         SharedPreferences p = prefs(app);
-        String base = p.getString("url", DEFAULT_URL).trim().replaceAll("/+$", "");
+        // Tailscale first (works anywhere); without Tailscale, the home Wi-Fi address still works at home.
+        String[] bases = { clean(p.getString("url", DEFAULT_URL)), clean(p.getString("lanUrl", DEFAULT_LAN_URL)) };
         String key = p.getString("key", "").trim();
         if (key.isEmpty()) return;
         while (true) {
@@ -67,7 +69,14 @@ final class Forwarder {
                 if (queue.length() == 0) return;
                 next = queue.optJSONObject(0);
             }
-            int status = next == null ? 200 : post(base + next.optString("path"), key, next.optJSONObject("body"));
+            int status = 200;
+            if (next != null) {
+                for (String base : bases) {
+                    if (base.isEmpty()) continue;
+                    status = post(base + next.optString("path"), key, next.optJSONObject("body"));
+                    if (status != 0) break; // reached the server (even if it said no): don't try the other address
+                }
+            }
             if (status == 401) {
                 status(app, "Wrong key - check it below");
                 return; // keep the queue; it goes out once the key is fixed
@@ -85,12 +94,16 @@ final class Forwarder {
         }
     }
 
+    static String clean(String url) {
+        return url == null ? "" : url.trim().replaceAll("/+$", "");
+    }
+
     /** POST JSON; returns the HTTP status, or 0 if the server couldn't be reached. */
     static int post(String url, String key, JSONObject body) {
         HttpURLConnection conn = null;
         try {
             conn = (HttpURLConnection) new URL(url).openConnection();
-            conn.setConnectTimeout(8000);
+            conn.setConnectTimeout(5000);
             conn.setReadTimeout(8000);
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);

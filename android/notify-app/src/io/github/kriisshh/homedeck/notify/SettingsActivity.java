@@ -22,6 +22,7 @@ import org.json.JSONObject;
 /** The one screen: server address, key, notification access, a test, and the last send status. */
 public class SettingsActivity extends Activity {
     private EditText url;
+    private EditText lanUrl;
     private EditText key;
     private TextView access;
     private TextView status;
@@ -39,9 +40,15 @@ public class SettingsActivity extends Activity {
         col.addView(title);
         col.addView(text("Sends this phone's notifications to Home Deck, through the always-on phone. It only runs when a notification arrives.", 15, false), gap(8));
 
-        col.addView(label("Server"), gap(28));
+        col.addView(label("Server (Tailscale)"), gap(28));
         url = input(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         col.addView(url);
+        col.addView(label("Server on home Wi-Fi"), gap(16));
+        lanUrl = input(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        col.addView(lanUrl);
+        TextView lanNote = text("Used when Tailscale is off and you're at home. While neither works, notifications wait and are sent later.", 13, false);
+        lanNote.setAlpha(0.6f);
+        col.addView(lanNote, gap(4));
         col.addView(label("Notification key"), gap(16));
         key = input(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         key.setHint("ABCD-EFGH");
@@ -69,6 +76,7 @@ public class SettingsActivity extends Activity {
         setContentView(scroll);
 
         url.setText(Forwarder.prefs(this).getString("url", Forwarder.DEFAULT_URL));
+        lanUrl.setText(Forwarder.prefs(this).getString("lanUrl", Forwarder.DEFAULT_LAN_URL));
         key.setText(Forwarder.prefs(this).getString("key", ""));
     }
 
@@ -82,31 +90,44 @@ public class SettingsActivity extends Activity {
     }
 
     private void save(boolean toast) {
-        String u = url.getText().toString().trim().replaceAll("/+$", "");
-        if (!u.startsWith("http")) u = "http://" + u;
-        Forwarder.prefs(this).edit().putString("url", u).putString("key", key.getText().toString().trim()).apply();
+        String u = withScheme(Forwarder.clean(url.getText().toString()));
+        String l = withScheme(Forwarder.clean(lanUrl.getText().toString()));
+        Forwarder.prefs(this).edit().putString("url", u).putString("lanUrl", l)
+                .putString("key", key.getText().toString().trim()).commit();
         url.setText(u);
+        lanUrl.setText(l);
         Forwarder.flush(this);
         if (toast) Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
     }
 
+    private static String withScheme(String u) {
+        return u.isEmpty() || u.startsWith("http") ? u : "http://" + u;
+    }
+
     private void sendTest() {
         save(false);
-        String u = Forwarder.prefs(this).getString("url", Forwarder.DEFAULT_URL);
+        String[] bases = { Forwarder.prefs(this).getString("url", ""), Forwarder.prefs(this).getString("lanUrl", "") };
         String k = Forwarder.prefs(this).getString("key", "");
         status.setText("Sending…");
         new Thread(() -> {
-            int code;
-            try {
-                code = Forwarder.post(u + "/notify", k, new JSONObject()
-                        .put("app", "Home Deck Notify").put("pkg", getPackageName())
-                        .put("title", "Test notification").put("text", "If you can read this on the Surface, it works."));
-            } catch (JSONException e) {
-                code = -1;
+            int code = 0;
+            String via = "";
+            for (String base : bases) {
+                if (base.isEmpty()) continue;
+                try {
+                    code = Forwarder.post(base + "/notify", k, new JSONObject()
+                            .put("app", "Home Deck Notify").put("pkg", getPackageName())
+                            .put("title", "Test notification").put("text", "If you can read this on the Surface, it works."));
+                } catch (JSONException e) {
+                    code = -1;
+                }
+                via = base;
+                if (code != 0) break;
             }
             int c = code;
-            runOnUiThread(() -> status.setText(c >= 200 && c < 300 ? "Test sent - check Home Deck"
-                    : c == 401 ? "Wrong key" : c == 0 ? "Can't reach " + u + " (is Tailscale on?)" : "Server answered HTTP " + c));
+            String v = via.replaceFirst("^https?://", "");
+            runOnUiThread(() -> status.setText(c >= 200 && c < 300 ? "Test sent via " + v + " - check Home Deck"
+                    : c == 401 ? "Wrong key" : c == 0 ? "Can't reach the server: turn on Tailscale, or connect to home Wi-Fi" : "Server answered HTTP " + c));
         }).start();
     }
 
