@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App icon: white outline Wi-Fi mark on black, in Home Deck's monochrome style. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#000000" android:pathData="M0,0h24v24h-24z" />
+    <group android:scaleX="0.6" android:scaleY="0.6" android:pivotX="12" android:pivotY="12">
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M5,12.55a11,11 0,0 1,14.08 0M1.42,9a16,16 0,0 1,21.16 0M8.53,16.11a6,6 0,0 1,6.95 0M12,20h0.01" />
+    </group>
+</vector>

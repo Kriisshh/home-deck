@@ -173,6 +173,10 @@ broadcasts reach the network (the Surface's Linux container can't do that).
    ```
    The last line stops Wi-Fi power saving while the screen is off. On the Galaxy S7 that power saving
    was dropping Tailscale's connections every couple of minutes.
+   **Relay Keeper** (`dist/relay-keeper.apk`, built from `android/relay-keeper`): install it on the old
+   phone (`adb install dist/relay-keeper.apk`) and open it once. Samsung's Wi-Fi chip naps between
+   packets, which made the phone answer in 0.3-3 s (Home Deck timed out). Relay Keeper keeps it awake
+   with a tiny packet to the router every 150 ms, so it answers in a few ms. It starts on every boot.
 4. Home Deck → Settings → Wake PC: Wake URL = that address, Body = `{"mac": "04:7C:16:48:3D:E8"}`,
    Other Devices = `MSI Laptop = 00:D8:61:83:BD:59`.
 5. Remote waking with a WoL app (e.g. WolOn): with Tailscale on both phones, set the app's
