@@ -26,7 +26,7 @@ export class PhoneNotifications {
       method,
       headers: { 'X-Key': this.key, ...(body ? { 'Content-Type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(15000), // the always-on phone's Wi-Fi can be slow to wake
     });
     if (res.status === 401) throw Object.assign(new Error('Wrong notification key - check Settings'), { status: 401 });
     if (!res.ok) throw new Error(`Notifications: HTTP ${res.status}`);
@@ -41,10 +41,6 @@ export class PhoneNotifications {
 
   dismiss(ids) {
     return this._req('/notifications/dismiss', { method: 'POST', body: { ids } });
-  }
-
-  clearAll() {
-    return this._req('/notifications/dismiss', { method: 'POST', body: { all: true } });
   }
 
   /** The app's icon in black and white, as a small data URL. Made once per app, then kept in storage. */

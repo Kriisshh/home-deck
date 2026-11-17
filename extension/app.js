@@ -878,7 +878,9 @@ function renderWakeDevices() {
 
 // The always-on phone keeps the main phone's notifications (forwarded by MacroDroid); the card lists
 // them with the app's icon in black and white and the title, and a tap opens the whole thing.
-const NT = { client: null, items: [], sig: '', timer: 0, icons: new Map(), current: null, clearArmed: 0 };
+// gone: ids dismissed here that the server hasn't confirmed yet. They stay hidden and the dismissal
+// is retried with each poll, so a slow or briefly unreachable phone can't bring them back.
+const NT = { client: null, items: [], sig: '', timer: 0, icons: new Map(), current: null, clearArmed: 0, gone: new Set(), failures: 0, sending: false };
 
 function initNotify() {
   clearTimeout(NT.timer);
@@ -887,6 +889,8 @@ function initNotify() {
   NT.client = key && base ? new PhoneNotifications(base, key) : null;
   NT.items = [];
   NT.sig = '';
+  NT.gone.clear();
+  NT.failures = 0;
   $('notify').hidden = !NT.client;
   if (NT.client) pollNotify();
 }
@@ -896,18 +900,49 @@ async function pollNotify() {
   if (!NT.client) return;
   let wait = isIdle() ? 30000 : 8000;
   try {
-    const items = await NT.client.list();
+    await sendDismissals();
+    const all = await NT.client.list();
+    for (const id of NT.gone) if (!all.some((i) => i.id === id)) NT.gone.delete(id); // confirmed
+    const items = all.filter((i) => !NT.gone.has(i.id));
+    NT.failures = 0;
     const sig = items.map((i) => i.id).join(',');
-    if (sig !== NT.sig) {
+    if (sig !== NT.sig || $('nt-sub').dataset.err) {
       NT.sig = sig;
       NT.items = items;
+      delete $('nt-sub').dataset.err;
       renderNotify();
     }
   } catch (err) {
-    $('nt-sub').textContent = err.status === 401 ? 'Wrong key - check Settings' : `Can't reach ${new URL(NT.client.base).host}`;
-    wait = 30000;
+    // The always-on phone's Wi-Fi sometimes answers slowly: keep the list and only say so if it
+    // keeps failing for a while.
+    NT.failures += 1;
+    if (err.status === 401 || NT.failures >= 4) {
+      $('nt-sub').dataset.err = '1';
+      $('nt-sub').textContent = err.status === 401 ? 'Wrong key - check Settings' : `Can't reach ${new URL(NT.client.base).host}`;
+    }
+    wait = 10000;
   }
   NT.timer = setTimeout(pollNotify, wait);
+}
+
+/** Send any dismissals the server hasn't confirmed (one request for all of them). */
+async function sendDismissals() {
+  if (!NT.gone.size || NT.sending) return;
+  NT.sending = true;
+  try {
+    await NT.client.dismiss([...NT.gone]);
+  } finally {
+    NT.sending = false;
+  }
+}
+
+/** Hide notifications right away and tell the server; failures are retried by the next poll. */
+function dismissLocally(ids) {
+  for (const id of ids) NT.gone.add(id);
+  NT.items = NT.items.filter((i) => !NT.gone.has(i.id));
+  NT.sig = NT.items.map((i) => i.id).join(',');
+  renderNotify();
+  sendDismissals().catch(() => {});
 }
 
 function ntTime(t) {
@@ -1023,10 +1058,7 @@ function openNotification(item) {
 async function dismissNotification(item = NT.current) {
   if ($('nt-sheet').open) $('nt-sheet').close();
   if (!item || !NT.client) return;
-  NT.items = NT.items.filter((i) => i.id !== item.id);
-  NT.sig = NT.items.map((i) => i.id).join(',');
-  renderNotify();
-  try { await NT.client.dismiss([item.id]); } catch (err) { toast(err.message, true); pollNotify(); }
+  dismissLocally([item.id]);
 }
 
 async function clearNotifications() {
@@ -1041,10 +1073,8 @@ async function clearNotifications() {
   NT.clearArmed = 0;
   btn.textContent = 'Clear';
   btn.classList.remove('confirm');
-  NT.items = [];
-  NT.sig = '';
-  renderNotify();
-  try { await NT.client?.clearAll(); } catch (err) { toast(err.message, true); pollNotify(); }
+  // Clear exactly what's shown (by id), so a notification arriving meanwhile isn't lost.
+  if (NT.client) dismissLocally(NT.items.map((i) => i.id));
 }
 
 function wireNotify() {
